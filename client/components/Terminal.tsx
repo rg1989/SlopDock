@@ -15,11 +15,15 @@ export function Terminal({ onReady, sendResize }: TerminalProps) {
   const fitAddonRef = useRef<XFitAddon | null>(null);
 
   useEffect(() => {
-    let terminal: XTerminal;
+    let cancelled = false;
+    let terminal: XTerminal | undefined;
 
     async function init() {
       const { Terminal: XTerm } = await import('@xterm/xterm');
       const { FitAddon } = await import('@xterm/addon-fit');
+
+      // StrictMode runs cleanup before the second effect fires — bail if that happened
+      if (cancelled) return;
 
       terminal = new XTerm({
         scrollback: 5000,
@@ -55,9 +59,11 @@ export function Terminal({ onReady, sendResize }: TerminalProps) {
     init();
 
     return () => {
+      cancelled = true;
       terminalRef.current?.dispose();
       terminalRef.current = null;
       fitAddonRef.current = null;
+      terminal?.dispose();
     };
   }, [onReady]);
 
