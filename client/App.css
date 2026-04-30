@@ -223,6 +223,28 @@ html, body, #root { height: 100%; background: #0d1117; color: #c9d1d9; }
 .tok-code    { color: #a5d6ff; background: #21262d; border-radius: 3px; padding: 0 2px; }
 .tok-link    { color: #58a6ff; text-decoration: underline; }
 
+/* YAML tokens */
+.tok-yaml-doc   { color: #8b949e; }
+.tok-yaml-key   { color: #7ee787; }
+.tok-yaml-bool  { color: #ff7b72; font-weight: 600; }
+.tok-yaml-list  { color: #e3b341; }
+
+/* JS/TS extras */
+.tok-func-name  { color: #d2a8ff; }
+.tok-property   { color: #7ee787; }
+.tok-type-annot { color: #7ee787; }
+.tok-operator   { color: #ff7b72; }
+
+/* Markdown extras */
+.tok-blockquote { color: #8b949e; font-style: italic; }
+.tok-list-item  { color: #e3b341; }
+.tok-hr         { color: #484f58; }
+
+/* CSS extras */
+.tok-css-unit   { color: #79c0ff; }
+.tok-css-var    { color: #d2a8ff; }
+.tok-css-func   { color: #d2a8ff; }
+
 /* File tree node styles */
 .ft-tree { list-style: none; padding: 4px 0; font-size: 13px; font-family: monospace; }
 .ft-dir { }
