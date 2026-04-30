@@ -9,6 +9,7 @@ export interface FileNode {
   name: string;
   path: string; // absolute path
   type: 'file' | 'dir';
+  hidden?: boolean; // true for dotfiles/dotdirs (except .git which is excluded entirely)
   children?: FileNode[];
 }
 
@@ -36,18 +37,17 @@ export async function buildFileTree(root: string, depth = 0): Promise<FileNode[]
 
   for (const entry of entries) {
     const name = entry.name;
-
-    // Skip dotfiles/dotdirs except .env
-    if (name.startsWith('.') && name !== '.env') continue;
+    const isHidden = name.startsWith('.');
 
     const absPath = path.join(root, name);
 
     if (entry.isDirectory()) {
+      // Always skip .git and other heavy dirs
       if (SKIP_DIRS.has(name)) continue;
       const children = await buildFileTree(absPath, depth + 1);
-      dirs.push({ name, path: absPath, type: 'dir', children });
+      dirs.push({ name, path: absPath, type: 'dir', hidden: isHidden, children });
     } else if (entry.isFile()) {
-      files.push({ name, path: absPath, type: 'file' });
+      files.push({ name, path: absPath, type: 'file', hidden: isHidden });
     }
   }
 
