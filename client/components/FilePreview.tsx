@@ -29,6 +29,8 @@ const LANG_RULES: Record<string, LangRule[]> = {
     ['string',   '"[^"\\\\]*(?:\\\\.[^"\\\\]*)*"|\'[^\'\\\\]*(?:\\\\.[^\'\\\\]*)*\'|`[^`\\\\]*(?:\\\\.[^`\\\\]*)*`'],
     ['keyword',  '\\b(const|let|var|function|return|if|else|for|while|class|import|export|from|default|async|await|typeof|new|this|try|catch|throw|null|undefined|true|false)\\b'],
     ['number',   '\\b\\d+\\.?\\d*\\b'],
+    ['property', '\\b[a-z_$][\\w$]*(?=\\s*:(?!:))'],
+    ['operator', '===|!==|>=|<=|=>|\\|\\||&&|\\.\\.\\.'],
     ['plain',    '[\\s\\S]'],
   ]),
   python: buildRules([
@@ -47,9 +49,12 @@ const LANG_RULES: Record<string, LangRule[]> = {
   css: buildRules([
     ['comment',   '/\\*[\\s\\S]*?\\*/'],
     ['string',    '"[^"]*"|\'[^\']*\''],
+    ['css-var',   '--[-\\w]+'],
     ['selector',  '\\.[-\\w]+|#[-\\w]+|[@:][-\\w]+'],
     ['property',  '[-\\w]+(?=\\s*:)'],
     ['value',     ':.*?(?=;|}|$)'],
+    ['css-unit',  '\\b\\d+\\.?\\d*(?:px|em|rem|vh|vw|%|s|ms|deg)\\b'],
+    ['css-func',  '\\b(?:rgb|rgba|hsl|hsla|var|calc|linear-gradient|radial-gradient)(?=\\()'],
     ['plain',     '[\\s\\S]'],
   ]),
   html: buildRules([
@@ -67,12 +72,25 @@ const LANG_RULES: Record<string, LangRule[]> = {
     ['plain',    '[\\s\\S]'],
   ]),
   markdown: buildRules([
-    ['heading',  '#{1,6} [^\n]*'],
-    ['bold',     '\\*\\*[^*]+\\*\\*|__[^_]+__'],
-    ['italic',   '\\*[^*\n]+\\*|_[^_\n]+_'],
-    ['code',     '`[^`\n]+`'],
-    ['link',     '\\[[^\\]]*\\]\\([^)]*\\)'],
-    ['plain',    '[\\s\\S]'],
+    ['heading',    '#{1,6} [^\n]*'],
+    ['bold',       '\\*\\*[^*]+\\*\\*|__[^_]+__'],
+    ['italic',     '\\*[^*\n]+\\*|_[^_\n]+_'],
+    ['code',       '`[^`\n]+`'],
+    ['link',       '\\[[^\\]]*\\]\\([^)]*\\)'],
+    ['blockquote', '>(?= )[^\n]*'],
+    ['list-item',  '-(?= )|\\*(?= )|\\d+\\.(?= )'],
+    ['hr',         '-{3,}|\\*{3,}|_{3,}'],
+    ['plain',      '[\\s\\S]'],
+  ]),
+  yaml: buildRules([
+    ['comment',   '#[^\n]*'],
+    ['yaml-doc',  '---|\\.\\.\\.'],
+    ['string',    '"[^"\\\\]*(?:\\\\.[^"\\\\]*)*"|\'[^\'\\\\]*(?:\\\\.[^\'\\\\]*)*\''],
+    ['yaml-bool', '\\b(?:true|false|yes|no|on|off|null|~)\\b'],
+    ['number',    '-?\\b\\d+\\.?\\d*(?:[eE][+\\-]?\\d+)?\\b'],
+    ['yaml-key',  '[-\\w.]+(?=\\s*:(?:\\s|$))'],
+    ['yaml-list', '-(?= )'],
+    ['plain',     '[\\s\\S]'],
   ]),
 };
 
@@ -83,15 +101,66 @@ function extToLang(ext: string): string {
     case '.json': return 'json';
     case '.css': case '.scss': return 'css';
     case '.md': case '.markdown': return 'markdown';
+    case '.yml': case '.yaml': return 'yaml';
     case '.html': case '.htm': case '.xml': case '.svg': return 'html';
     case '.sh': case '.bash': case '.zsh': return 'shell';
     default: return 'plain';
   }
 }
 
+function tokenizeWith(code: string, rules: LangRule[]): Token[] {
+  const tokens: Token[] = [];
+  let pos = 0;
+  while (pos < code.length) {
+    let matched = false;
+    for (const rule of rules) {
+      rule.re.lastIndex = pos;
+      const m = rule.re.exec(code);
+      if (m && m.index === pos) {
+        tokens.push({ type: rule.type, text: m[0] });
+        pos += m[0].length;
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) {
+      tokens.push({ type: 'plain', text: code[pos] });
+      pos += 1;
+    }
+  }
+  return tokens;
+}
+
+function tokenizeFrontmatter(code: string): Token[] | null {
+  // Detect YAML frontmatter: file must start with "---\n" or "---\r\n"
+  if (!code.startsWith('---\n') && !code.startsWith('---\r\n')) return null;
+  // Find the closing --- line (search for \n--- after position 3)
+  const rest = code.slice(3);
+  const closingIdx = rest.search(/\n---(?:\r?\n|$)/);
+  if (closingIdx === -1) return null;
+  // frontmatter = from 0 up to and including the closing ---\n
+  const fmEnd = 3 + closingIdx + 1; // position of the \n before closing ---
+  // find the actual end of the closing --- line
+  const afterClose = code.indexOf('\n', fmEnd + 3);
+  const frontmatterEnd = afterClose === -1 ? code.length : afterClose + 1;
+
+  const frontmatter = code.slice(0, frontmatterEnd);
+  const remainder = code.slice(frontmatterEnd);
+
+  const yamlTokens = tokenizeWith(frontmatter, LANG_RULES['yaml']);
+  const mdTokens = tokenizeWith(remainder, LANG_RULES['markdown']);
+  return [...yamlTokens, ...mdTokens];
+}
+
 function tokenize(code: string, ext: string): Token[] {
   const lang = extToLang(ext);
   if (lang === 'plain') return [{ type: 'plain', text: code }];
+
+  // YAML frontmatter detection for markdown files
+  if (lang === 'markdown') {
+    const fmTokens = tokenizeFrontmatter(code);
+    if (fmTokens) return fmTokens;
+  }
 
   const rules = LANG_RULES[lang];
   const tokens: Token[] = [];
