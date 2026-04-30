@@ -115,4 +115,77 @@ describe('Composer', () => {
     expect(mockOnSend).toHaveBeenCalledTimes(1);
     expect(mockOnSend).toHaveBeenCalledWith('line1\nline2\r');
   });
+
+  // FILE-04: @path injection tests
+  it('@path injection — single attachment — onSend receives @path prepended to message', async () => {
+    const user = userEvent.setup();
+    render(
+      <Composer
+        onSend={mockOnSend}
+        attachments={['/abs/path/file.ts']}
+        clearAttachments={vi.fn()}
+      />
+    );
+
+    const textarea = screen.getByRole('textbox');
+    await user.type(textarea, 'hello');
+    await user.keyboard('{Enter}');
+
+    expect(mockOnSend).toHaveBeenCalledTimes(1);
+    expect(mockOnSend).toHaveBeenCalledWith('@/abs/path/file.ts\nhello\r');
+  });
+
+  it('@path injection — multiple attachments — onSend receives all @paths space-separated', async () => {
+    const user = userEvent.setup();
+    render(
+      <Composer
+        onSend={mockOnSend}
+        attachments={['/a/b.ts', '/c/d.ts']}
+        clearAttachments={vi.fn()}
+      />
+    );
+
+    const textarea = screen.getByRole('textbox');
+    await user.type(textarea, 'hello');
+    await user.keyboard('{Enter}');
+
+    expect(mockOnSend).toHaveBeenCalledTimes(1);
+    expect(mockOnSend).toHaveBeenCalledWith('@/a/b.ts @/c/d.ts\nhello\r');
+  });
+
+  it('@path injection — no attachments — onSend called with plain message (existing behavior preserved)', async () => {
+    const user = userEvent.setup();
+    render(
+      <Composer
+        onSend={mockOnSend}
+        attachments={[]}
+        clearAttachments={vi.fn()}
+      />
+    );
+
+    const textarea = screen.getByRole('textbox');
+    await user.type(textarea, 'hello');
+    await user.keyboard('{Enter}');
+
+    expect(mockOnSend).toHaveBeenCalledTimes(1);
+    expect(mockOnSend).toHaveBeenCalledWith('hello\r');
+  });
+
+  it('attachments cleared after send — clearAttachments prop called once after Enter', async () => {
+    const user = userEvent.setup();
+    const mockClearAttachments = vi.fn();
+    render(
+      <Composer
+        onSend={mockOnSend}
+        attachments={['/abs/path/file.ts']}
+        clearAttachments={mockClearAttachments}
+      />
+    );
+
+    const textarea = screen.getByRole('textbox');
+    await user.type(textarea, 'hello');
+    await user.keyboard('{Enter}');
+
+    expect(mockClearAttachments).toHaveBeenCalledTimes(1);
+  });
 });
