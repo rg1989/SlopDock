@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-04-30)
 Phase: 3 of 3 (Voice I/O) — COMPLETE
 Plan: 4 of 4 in current phase — COMPLETE
 Status: All 3 phases complete — v1.0 milestone delivered
-Last activity: 2026-04-30 — Plan 03-04 complete: VoiceBar, useTts+useVoiceInput wiring, all 6 voice requirements verified
+Last activity: 2026-04-30 - Completed quick task 1: add syntax colors and edit mode to file preview panel
 
 Progress: [██████████] 100% (All Phases)
 
@@ -112,6 +112,12 @@ None yet.
 ### Blockers/Concerns
 
 None yet.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 1 | add syntax colors and edit mode to file preview panel | 2026-04-30 | a5c4deb | [1-add-syntax-colors-and-edit-mode-to-file-](.planning/quick/1-add-syntax-colors-and-edit-mode-to-file-/) |
 
 ## Session Continuity
 
