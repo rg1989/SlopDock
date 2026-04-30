@@ -2,6 +2,8 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import type { Terminal } from '@xterm/xterm';
 import { usePty } from './hooks/usePty';
 import { useFileTree } from './hooks/useFileTree';
+import { useVoiceInput } from './hooks/useVoiceInput';
+import { useTts } from './hooks/useTts';
 import { Terminal as TerminalComponent } from './components/Terminal';
 import { FolderPicker } from './components/FolderPicker';
 import { Composer } from './components/Composer';
@@ -9,6 +11,7 @@ import { FileTree } from './components/FileTree';
 import { FilePreview } from './components/FilePreview';
 import type { FilePreviewData } from './components/FilePreview';
 import { AttachBar } from './components/AttachBar';
+import { VoiceBar } from './components/VoiceBar';
 import './App.css';
 
 const STORAGE_KEY = 'claudetalk_last_folder';
@@ -83,6 +86,7 @@ export default function App() {
   const [attachments, setAttachments] = useState<string[]>([]);
   const [previewPath, setPreviewPath] = useState<string | null>(null);
   const [previewData, setPreviewData] = useState<FilePreviewData | null>(null);
+  const [ttsEnabled, setTtsEnabled] = useState(false);
 
   const sidebarMaxRef = useRef<number>(Infinity);
   const previewMaxRef = useRef<number>(Infinity);
@@ -98,11 +102,25 @@ export default function App() {
   const cols = terminal?.cols ?? 80;
   const rows = terminal?.rows ?? 24;
 
+  const tts = useTts({ enabled: ttsEnabled });
+
   const { sendInput, sendResize, connected } = usePty({
     cwd,
     terminal,
     cols,
     rows,
+    onData: ttsEnabled ? tts.handleData : undefined,
+  });
+
+  const voice = useVoiceInput({
+    onTranscript: (text) => {
+      // TTS-03: transcript from interrupt becomes a new sent message
+      sendInput(text + '\r');
+    },
+    onStart: () => {
+      // TTS-04: stop TTS when mic recording starts
+      tts.stop();
+    },
   });
 
   const { tree, changedPaths, mode, setMode } = useFileTree(cwd);
@@ -197,6 +215,16 @@ export default function App() {
             onRemove={(p) => setAttachments(prev => prev.filter(x => x !== p))}
           />
           <div className="composer-area">
+            <VoiceBar
+              recording={voice.recording}
+              speaking={tts.speaking}
+              ttsEnabled={ttsEnabled}
+              onMicStart={voice.start}
+              onMicStop={voice.stop}
+              onTtsToggle={() => setTtsEnabled(e => !e)}
+              onTtsStop={tts.stop}
+              supported={voice.supported}
+            />
             <Composer
               ref={composerRef}
               onSend={sendInput}
