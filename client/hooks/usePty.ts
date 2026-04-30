@@ -54,11 +54,21 @@ export function usePty({ cwd, terminal, cols, rows }: UsePtyOptions): UsePtyRetu
     // Route keystrokes typed in the terminal directly to the PTY
     const inputDisposable = terminal.onData((data) => send({ type: 'input', data }));
 
+    // Shift+Enter sends \n (literal newline) instead of \r (submit) — for multiline input
+    terminal.attachCustomKeyEventHandler((e) => {
+      if (e.type === 'keydown' && e.key === 'Enter' && e.shiftKey) {
+        send({ type: 'input', data: '\n' });
+        return false; // suppress xterm's normal \r handling
+      }
+      return true;
+    });
+
     return () => {
       ws.close();
       wsRef.current = null;
       setConnected(false);
       inputDisposable.dispose();
+      terminal.attachCustomKeyEventHandler(() => true); // reset handler
     };
   }, [cwd, terminal]); // cols/rows intentionally excluded — resize handled separately
 
