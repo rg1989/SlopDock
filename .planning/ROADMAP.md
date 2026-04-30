@@ -46,7 +46,13 @@ Plans:
   3. User can select one or more files to attach; image and text previews appear before sending
   4. Attached files are automatically included via @path syntax when the message is sent to Claude CLI
   5. Clicking any file in the explorer opens its contents in a preview panel
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — Wave 0 test scaffolds (FileTree, useFileTree, FilePreview, Composer @path tests)
+- [ ] 02-02-PLAN.md — Server file APIs (file tree, git status, file read endpoints + isbinaryfile)
+- [ ] 02-03-PLAN.md — FileTree component + useFileTree hook + App sidebar layout (FILE-01, FILE-02)
+- [ ] 02-04-PLAN.md — File attachment, preview panel, Composer @path injection (FILE-03, FILE-04, FILE-05)
 
 ### Phase 3: Voice I/O
 **Goal**: User can speak to Claude and hear responses read aloud, with full interruption control
@@ -68,5 +74,5 @@ Phases execute in numeric order: 1 → 2 → 3
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. PTY Core | 4/4 | Complete    | 2026-04-30 |
-| 2. File System | 0/TBD | Not started | - |
+| 2. File System | 0/4 | Not started | - |
 | 3. Voice I/O | 0/TBD | Not started | - |
