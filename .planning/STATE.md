@@ -118,9 +118,10 @@ None yet.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 1 | add syntax colors and edit mode to file preview panel | 2026-04-30 | a5c4deb | [1-add-syntax-colors-and-edit-mode-to-file-](.planning/quick/1-add-syntax-colors-and-edit-mode-to-file-/) |
+| 2 | add slash-command autocomplete dropdown to Composer | 2026-05-01 | 58f5c3e | [2-add-slash-command-autocomplete-dropdown-](.planning/quick/2-add-slash-command-autocomplete-dropdown-/) |
 
 ## Session Continuity
 
-Last session: 2026-04-30T20:55:35.143Z
-Stopped at: Completed quick-1: syntax highlighting + edit/save mode in FilePreview
+Last session: 2026-05-01T00:00:00.000Z
+Stopped at: Completed quick-2: slash-command autocomplete dropdown in Composer
 Resume file: None
