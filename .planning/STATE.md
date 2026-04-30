@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: "Completed 03-02: useVoiceInput hook + usePty onData extension"
-last_updated: "2026-04-30T17:38:48.536Z"
-last_activity: "2026-04-30 — Plan 01-04 complete: E2E verification, all 5 TERM criteria confirmed"
+stopped_at: "Completed 03-04: VoiceBar + App.tsx voice I/O integration — Phase 3 complete"
+last_updated: "2026-04-30T17:46:35Z"
+last_activity: "2026-04-30 — Plan 03-04 complete: VoiceBar, useTts+useVoiceInput wiring, all 6 voice requirements verified"
 progress:
   total_phases: 3
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 12
-  completed_plans: 11
+  completed_plans: 12
   percent: 100
 ---
 
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-04-30)
 
 ## Current Position
 
-Phase: 1 of 3 (PTY Core) — COMPLETE
+Phase: 3 of 3 (Voice I/O) — COMPLETE
 Plan: 4 of 4 in current phase — COMPLETE
-Status: Phase 1 complete; ready for Phase 2 planning
-Last activity: 2026-04-30 — Plan 01-04 complete: E2E verification, all 5 TERM criteria confirmed
+Status: All 3 phases complete — v1.0 milestone delivered
+Last activity: 2026-04-30 — Plan 03-04 complete: VoiceBar, useTts+useVoiceInput wiring, all 6 voice requirements verified
 
-Progress: [██████████] 100% (Phase 1)
+Progress: [██████████] 100% (All Phases)
 
 ## Performance Metrics
 
@@ -101,6 +101,9 @@ Recent decisions affecting current work:
 - [Phase 03-voice-io]: Export MockSpeechRecognition and mockSpeechSynthesis from setup.ts so test files can assert on exact calls without re-creating mocks
 - [Phase 03-voice-io]: Create fresh SpeechRecognition instance on each start() call — avoids browser DOMException on re-start
 - [Phase 03-voice-io]: onData added to UsePtyOptions as optional callback — zero-cost when absent, enables useTts PTY interception
+- [Phase 03-voice-io]: Mutual exclusion (TTS-04) enforced in App.tsx wiring via onStart callback, not inside hooks — keeps hooks independently testable
+- [Phase 03-voice-io]: onData gated by ttsEnabled flag (ttsEnabled ? tts.handleData : undefined) — zero processing overhead when TTS is off
+- [Phase 03-voice-io]: VoiceBar as pure presentational component receiving all callbacks as props — no direct hook calls inside component
 
 ### Pending Todos
 
@@ -112,6 +115,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-30T17:38:48.534Z
-Stopped at: Completed 03-02: useVoiceInput hook + usePty onData extension
+Last session: 2026-04-30T17:46:35Z
+Stopped at: Completed 03-04: VoiceBar + App.tsx voice I/O integration — Phase 3 and v1.0 milestone complete
 Resume file: None

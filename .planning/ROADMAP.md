@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: PTY Core** - Node.js backend + xterm.js frontend wired end-to-end; user can open Claude CLI in a real terminal session in the browser
 - [x] **Phase 2: File System** - VSCode-style file explorer sidebar, file attachment with previews, file preview panel (completed 2026-04-30)
-- [ ] **Phase 3: Voice I/O** - Voice transcription into the message composer, TTS playback of agent responses, mid-sentence interruption
+- [x] **Phase 3: Voice I/O** - Voice transcription into the message composer, TTS playback of agent responses, mid-sentence interruption (completed 2026-04-30)
 
 ## Phase Details
 
@@ -81,4 +81,4 @@ Phases execute in numeric order: 1 → 2 → 3
 |-------|----------------|--------|-----------|
 | 1. PTY Core | 4/4 | Complete    | 2026-04-30 |
 | 2. File System | 4/4 | Complete    | 2026-04-30 |
-| 3. Voice I/O | 3/4 | In Progress|  |
+| 3. Voice I/O | 4/4 | Complete   | 2026-04-30 |
