@@ -47,8 +47,12 @@ export function useVoiceInput({ onTranscript, onStart }: UseVoiceInputOptions): 
       setRecording(false);
       if (e.error === 'not-allowed') {
         setMicError('Microphone permission denied. Allow access in your browser settings.');
+      } else if (e.error === 'network') {
+        setMicError('Speech recognition requires an internet connection (Chrome sends audio to Google).');
       } else if (e.error === 'no-speech') {
         setMicError(null); // silent — just ended without hearing anything
+      } else if (e.error === 'aborted') {
+        setMicError(null); // user stopped — not an error
       } else {
         setMicError(`Mic error: ${e.error}`);
       }
