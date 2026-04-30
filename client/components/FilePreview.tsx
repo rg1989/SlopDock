@@ -67,9 +67,10 @@ const LANG_RULES: Record<string, LangRule[]> = {
     ['plain',    '[\\s\\S]'],
   ]),
   markdown: buildRules([
-    ['heading',  '^#{1,6} .*'],
+    ['heading',  '#{1,6} [^\n]*'],
     ['bold',     '\\*\\*[^*]+\\*\\*|__[^_]+__'],
-    ['code',     '`[^`]+`'],
+    ['italic',   '\\*[^*\n]+\\*|_[^_\n]+_'],
+    ['code',     '`[^`\n]+`'],
     ['link',     '\\[[^\\]]*\\]\\([^)]*\\)'],
     ['plain',    '[\\s\\S]'],
   ]),

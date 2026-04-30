@@ -219,7 +219,8 @@ html, body, #root { height: 100%; background: #0d1117; color: #c9d1d9; }
 /* Markdown */
 .tok-heading { color: #79c0ff; font-weight: 700; }
 .tok-bold    { color: #e3b341; font-weight: 700; }
-.tok-code    { color: #a5d6ff; background: #21262d; border-radius: 3px; }
+.tok-italic  { color: #e3b341; font-style: italic; }
+.tok-code    { color: #a5d6ff; background: #21262d; border-radius: 3px; padding: 0 2px; }
 .tok-link    { color: #58a6ff; text-decoration: underline; }
 
 /* File tree node styles */
