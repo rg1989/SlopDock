@@ -12,6 +12,48 @@ import { AttachBar } from './components/AttachBar';
 import './App.css';
 
 const STORAGE_KEY = 'claudetalk_last_folder';
+const SIDEBAR_MIN = 140;
+const SIDEBAR_DEFAULT = 240;
+const PREVIEW_MIN = 180;
+const PREVIEW_DEFAULT = 320;
+
+function useDragResize(
+  initial: number,
+  min: number,
+  direction: 'left' | 'right',
+) {
+  const [width, setWidth] = useState(initial);
+  const dragging = useRef(false);
+  const startX = useRef(0);
+  const startW = useRef(0);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    dragging.current = true;
+    startX.current = e.clientX;
+    startW.current = width;
+    setIsDragging(true);
+
+    const onMove = (ev: MouseEvent) => {
+      if (!dragging.current) return;
+      const delta = direction === 'left'
+        ? ev.clientX - startX.current
+        : startX.current - ev.clientX;
+      setWidth(Math.max(min, startW.current + delta));
+    };
+    const onUp = () => {
+      dragging.current = false;
+      setIsDragging(false);
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, [width, min, direction]);
+
+  return { width, isDragging, onMouseDown };
+}
 
 function getInitialPath(): string | null {
   // URL param takes priority — each tab remembers its own folder across refreshes
@@ -37,6 +79,9 @@ export default function App() {
   const [attachments, setAttachments] = useState<string[]>([]);
   const [previewPath, setPreviewPath] = useState<string | null>(null);
   const [previewData, setPreviewData] = useState<FilePreviewData | null>(null);
+
+  const sidebar = useDragResize(SIDEBAR_DEFAULT, SIDEBAR_MIN, 'left');
+  const preview = useDragResize(PREVIEW_DEFAULT, PREVIEW_MIN, 'right');
 
   const cols = terminal?.cols ?? 80;
   const rows = terminal?.rows ?? 24;
@@ -101,30 +146,36 @@ export default function App() {
       </div>
       <div className="app-body">
         {cwd && (
-          <div className="sidebar">
-            <div className="sidebar-toolbar">
-              <button
-                className={`mode-btn ${mode === 'all' ? 'active' : ''}`}
-                onClick={() => setMode('all')}
-              >All</button>
-              <button
-                className={`mode-btn ${mode === 'changes' ? 'active' : ''}`}
-                onClick={() => setMode('changes')}
-              >Changes</button>
+          <>
+            <div className="sidebar" style={{ width: sidebar.width }}>
+              <div className="sidebar-toolbar">
+                <button
+                  className={`mode-btn ${mode === 'all' ? 'active' : ''}`}
+                  onClick={() => setMode('all')}
+                >All</button>
+                <button
+                  className={`mode-btn ${mode === 'changes' ? 'active' : ''}`}
+                  onClick={() => setMode('changes')}
+                >Changes</button>
+              </div>
+              <FileTree
+                nodes={tree}
+                selected={new Set(attachments)}
+                onSelect={(p) => setAttachments(prev => prev.includes(p) ? prev : [...prev, p])}
+                onPreview={setPreviewPath}
+                changedPaths={changedPaths}
+                mode={mode}
+              />
+              <AttachBar
+                attachments={attachments}
+                onRemove={(p) => setAttachments(prev => prev.filter(x => x !== p))}
+              />
             </div>
-            <FileTree
-              nodes={tree}
-              selected={new Set(attachments)}
-              onSelect={(p) => setAttachments(prev => prev.includes(p) ? prev : [...prev, p])}
-              onPreview={setPreviewPath}
-              changedPaths={changedPaths}
-              mode={mode}
+            <div
+              className={`resize-handle${sidebar.isDragging ? ' dragging' : ''}`}
+              onMouseDown={sidebar.onMouseDown}
             />
-            <AttachBar
-              attachments={attachments}
-              onRemove={(p) => setAttachments(prev => prev.filter(x => x !== p))}
-            />
-          </div>
+          </>
         )}
         <div className="main-area">
           <div
@@ -146,13 +197,19 @@ export default function App() {
           </div>
         </div>
         {previewPath && (
-          <div className="preview-panel">
+          <>
+          <div
+            className={`resize-handle${preview.isDragging ? ' dragging' : ''}`}
+            onMouseDown={preview.onMouseDown}
+          />
+          <div className="preview-panel" style={{ width: preview.width }}>
             <div className="preview-panel-header">
               <span className="preview-filename">{previewPath.split('/').pop()}</span>
               <button className="preview-close" onClick={() => { setPreviewPath(null); setPreviewData(null); }}>&times;</button>
             </div>
             <FilePreview data={previewData} />
           </div>
+          </>
         )}
       </div>
     </div>

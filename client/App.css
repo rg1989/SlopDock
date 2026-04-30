@@ -41,16 +41,24 @@ html, body, #root { height: 100%; background: #0d1117; color: #c9d1d9; }
 }
 
 .sidebar {
-  width: 240px;
-  min-width: 160px;
-  max-width: 320px;
   flex-shrink: 0;
   overflow-y: auto;
   background: #161b22;
-  border-right: 1px solid #30363d;
+  border-right: none;
   display: flex;
   flex-direction: column;
 }
+
+.resize-handle {
+  width: 4px;
+  flex-shrink: 0;
+  background: #30363d;
+  cursor: col-resize;
+  transition: background 0.15s;
+  user-select: none;
+}
+.resize-handle:hover,
+.resize-handle.dragging { background: #58a6ff; }
 
 .sidebar-toolbar {
   display: flex;
@@ -80,12 +88,12 @@ html, body, #root { height: 100%; background: #0d1117; color: #c9d1d9; }
 }
 
 .preview-panel {
-  width: 320px;
-  min-width: 200px;
   flex-shrink: 0;
   overflow: auto;
   background: #0d1117;
-  border-left: 1px solid #30363d;
+  border-left: none;
+  display: flex;
+  flex-direction: column;
 }
 
 /* AttachBar */
