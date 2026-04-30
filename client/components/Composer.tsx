@@ -1,4 +1,5 @@
 import { useState, KeyboardEvent, forwardRef } from 'react';
+import SlashMenu, { SLASH_COMMANDS, SlashCommand } from './SlashMenu';
 
 interface ComposerProps {
   onSend: (text: string) => void;
@@ -14,7 +15,83 @@ export const Composer = forwardRef<HTMLTextAreaElement, ComposerProps>(
   const [value, setValue] = useState('');
   const [picking, setPicking] = useState(false);
 
+  // Slash autocomplete state
+  const [slashQuery, setSlashQuery] = useState<string | null>(null);
+  const [slashAnchor, setSlashAnchor] = useState(0);
+  const [menuIndex, setMenuIndex] = useState(0);
+
+  // Filtered items — derived, not state
+  const menuItems = slashQuery === null
+    ? []
+    : SLASH_COMMANDS.filter(c =>
+        c.command.toLowerCase().includes(slashQuery.toLowerCase()) ||
+        c.description.toLowerCase().includes(slashQuery.toLowerCase())
+      );
+
+  const insertCommand = (cmd: SlashCommand) => {
+    const ta = (ref as React.RefObject<HTMLTextAreaElement>).current;
+    const pos = ta?.selectionStart ?? value.length;
+    const before = value.slice(0, slashAnchor);
+    const after = value.slice(pos);
+    const newVal = before + cmd.command + ' ' + after;
+    setValue(newVal);
+    setSlashQuery(null);
+    requestAnimationFrame(() => {
+      if (ta) {
+        const newPos = slashAnchor + cmd.command.length + 1;
+        ta.setSelectionRange(newPos, newPos);
+        ta.focus();
+      }
+    });
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setValue(val);
+
+    const pos = e.target.selectionStart ?? val.length;
+    const before = val.slice(0, pos);
+    const lineStart = before.lastIndexOf('\n') + 1;
+    const lineText = before.slice(lineStart);
+
+    if (lineText.startsWith('/')) {
+      const query = lineText.slice(1);
+      if (!query.includes(' ')) {
+        setSlashQuery(query);
+        setSlashAnchor(lineStart);
+        setMenuIndex(0);
+        return;
+      }
+    }
+    setSlashQuery(null);
+  };
+
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    // Slash menu keyboard navigation
+    if (slashQuery !== null && menuItems.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setMenuIndex(i => Math.min(i + 1, menuItems.length - 1));
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setMenuIndex(i => Math.max(i - 1, 0));
+        return;
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        insertCommand(menuItems[menuIndex]);
+        return;
+      }
+    }
+    if (e.key === 'Escape' && slashQuery !== null) {
+      e.preventDefault();
+      setSlashQuery(null);
+      return;
+    }
+
+    // Existing Enter-to-send logic
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       const trimmed = value.trim();
@@ -59,10 +136,18 @@ export const Composer = forwardRef<HTMLTextAreaElement, ComposerProps>(
 
   return (
     <div style={{ position: 'relative' }}>
+      {slashQuery !== null && menuItems.length > 0 && (
+        <SlashMenu
+          items={menuItems}
+          selectedIndex={menuIndex}
+          onSelect={insertCommand}
+          onClose={() => setSlashQuery(null)}
+        />
+      )}
       <textarea
         ref={ref}
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={handleChange}
         onKeyDown={handleKeyDown}
         disabled={disabled}
         placeholder="Type a message… (Enter to send, Shift+Enter for newline)"
