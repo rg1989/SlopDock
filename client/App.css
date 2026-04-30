@@ -66,6 +66,14 @@ html, body, #root { height: 100%; background: #0d1117; color: #c9d1d9; }
   padding: 6px 8px;
   border-bottom: 1px solid #30363d;
   flex-shrink: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+.sidebar-toolbar .mode-btn {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .mode-btn {
