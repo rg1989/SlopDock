@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 02-02-PLAN.md — three file system API endpoints live
-last_updated: "2026-04-30T16:15:17.860Z"
+stopped_at: Completed 02-03-PLAN.md — FileTree sidebar and useFileTree hook with All/Changes toggle
+last_updated: "2026-04-30T16:20:54.753Z"
 last_activity: "2026-04-30 — Plan 01-04 complete: E2E verification, all 5 TERM criteria confirmed"
 progress:
   total_phases: 3
   completed_phases: 1
   total_plans: 8
-  completed_plans: 6
+  completed_plans: 7
   percent: 100
 ---
 
@@ -54,6 +54,7 @@ Progress: [██████████] 100% (Phase 1)
 | Phase 01-pty-core P03 | 8 | 2 tasks | 4 files |
 | Phase 02-file-system P01 | 2 min | 2 tasks | 4 files |
 | Phase 02-file-system P02 | 2min | 2 tasks | 4 files |
+| Phase 02-file-system P03 | 4min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,8 @@ Recent decisions affecting current work:
 - [Phase 02-file-system]: path.sep suffix in traversal check: absPath.startsWith(resolvedCwd + path.sep) blocks root-level attacks while remaining platform-safe
 - [Phase 02-file-system]: getGitChangedPaths always returns [] on error — callers never need try/catch for the git-status route
 - [Phase 02-file-system]: buildFileTree max depth 8 guard prevents hangs on pathological repos; sort dirs-before-files matches IDE conventions
+- [Phase 02-file-system]: FileNode interface defined in FileTree.tsx and imported by useFileTree.ts — avoids shared types coupling between client and server
+- [Phase 02-file-system]: Preview panel slot added as empty placeholder in 02-03 so 02-04 can wire FilePreview without further layout changes
 
 ### Pending Todos
 
@@ -94,6 +97,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-30T16:15:17.858Z
-Stopped at: Completed 02-02-PLAN.md — three file system API endpoints live
+Last session: 2026-04-30T16:20:54.751Z
+Stopped at: Completed 02-03-PLAN.md — FileTree sidebar and useFileTree hook with All/Changes toggle
 Resume file: None
