@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-02-PLAN.md — frontend terminal components done, ready for 01-03 App wiring
-last_updated: "2026-04-30T14:41:20.309Z"
+stopped_at: Completed 01-03-PLAN.md — Composer component + App layout wired, ready for 01-04 E2E verification
+last_updated: "2026-04-30T14:43:49.776Z"
 last_activity: "2026-04-30 — Plan 01-01 complete: backend PTY manager, WebSocket handler, HTTP server"
 progress:
   total_phases: 3
   completed_phases: 0
   total_plans: 4
-  completed_plans: 2
+  completed_plans: 3
   percent: 50
 ---
 
@@ -51,6 +51,7 @@ Progress: [█████░░░░░] 50%
 
 *Updated after each plan completion*
 | Phase 01-pty-core P02 | 2 | 2 tasks | 9 files |
+| Phase 01-pty-core P03 | 8 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -67,6 +68,8 @@ Recent decisions affecting current work:
 - [01-01]: Kill PTY on WebSocket close in Phase 1 — session persistence deferred to v2 (POW-05)
 - [Phase 01-02]: cols/rows excluded from usePty useEffect deps — window resize triggers sendResize separately, preventing WebSocket reconnects
 - [Phase 01-02]: useResize hook accepts terminal+fitAddon as nullable — no-op until Terminal fully initialized, safe to call during mount
+- [Phase 01-03]: Composer sends value+newline to PTY — trim check guards empty sends but raw value is transmitted to preserve multiline whitespace
+- [Phase 01-03]: App dual-gate pattern: Composer disabled until both cwd and terminal are set, preventing PTY race condition
 
 ### Pending Todos
 
@@ -78,6 +81,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-30T14:41:20.306Z
-Stopped at: Completed 01-02-PLAN.md — frontend terminal components done, ready for 01-03 App wiring
+Last session: 2026-04-30T14:43:49.774Z
+Stopped at: Completed 01-03-PLAN.md — Composer component + App layout wired, ready for 01-04 E2E verification
 Resume file: None
