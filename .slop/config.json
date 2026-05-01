@@ -6,5 +6,8 @@
     "command": "claude",
     "args": [],
     "label": "Claude"
+  },
+  "aiGuardian": {
+    "enabled": true
   }
 }

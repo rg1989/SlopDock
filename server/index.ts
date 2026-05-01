@@ -1003,9 +1003,38 @@ app.post('/api/slop-init', async (req, res) => {
     created: new Date().toISOString(),
     projectName: projectName ?? path.basename(path.resolve(cwd)),
     agent: { command: 'claude', args: [], label: 'Claude' },
+    aiGuardian: { enabled: true },
   };
   await atomicWrite(configFile, JSON.stringify(config, null, 2));
   res.json({ ok: true, config });
+});
+
+app.get('/api/slop-guardian', async (req, res) => {
+  const { cwd } = req.query as { cwd?: string };
+  if (!cwd) { res.status(400).json({ error: 'cwd required' }); return; }
+  const configFile = path.join(path.resolve(cwd), '.slop', 'config.json');
+  try {
+    const raw = await readFile(configFile, 'utf-8');
+    const config = JSON.parse(raw);
+    res.json({ enabled: config.aiGuardian?.enabled ?? true });
+  } catch {
+    res.json({ enabled: true });
+  }
+});
+
+app.put('/api/slop-guardian', async (req, res) => {
+  const { cwd, enabled } = req.body as { cwd?: string; enabled?: boolean };
+  if (!cwd || enabled === undefined) { res.status(400).json({ error: 'cwd and enabled required' }); return; }
+  const configFile = path.join(path.resolve(cwd), '.slop', 'config.json');
+  try {
+    const raw = await readFile(configFile, 'utf-8');
+    const config = JSON.parse(raw);
+    config.aiGuardian = { enabled };
+    await atomicWrite(configFile, JSON.stringify(config, null, 2));
+    res.json({ ok: true, enabled });
+  } catch {
+    res.status(404).json({ error: 'no .slop/config.json found' });
+  }
 });
 
 app.get('/api/global-settings', async (_req, res) => {

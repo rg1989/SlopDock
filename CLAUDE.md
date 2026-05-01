@@ -1,46 +1,67 @@
 # SlopDock — Project Rules
 
+@.slop/ai-guardian.md
+
 ## Design System
 
 ### Font
 
 **All UI text uses `monospace` (system monospace).** No exceptions unless noted below.
 
+The global baseline is locked in `App.css` line 1:
+
 ```css
-font-family: monospace;
+* { font-family: monospace; }
+html, body, #root { font-family: monospace; }
 ```
 
-Exceptions:
+This means every element inherits monospace by default. **Do not remove or weaken these global rules.** They exist precisely to prevent font regressions.
+
+Exceptions (these classes override the global rule intentionally):
 - Terminal output: `'SF Mono', 'Fira Code', 'Courier New', monospace`
 - Markdown body prose (`.md-body`): `Georgia, serif`
 
-**Never omit `font-family: monospace` from any new component.** This is the single most common regression — inline styles and new components forget it and fall back to the browser's sans-serif default.
+**Do NOT add `font-family` to individual components or CSS classes** unless you are explicitly setting one of the two exception values above. The global `*` rule handles everything else. Adding redundant per-component `font-family: monospace` declarations is noise — the exception case is the only reason to ever write it explicitly.
 
 ### Color Palette
 
-Derived from GitHub's dark theme. Use these tokens — do not introduce new hex values.
+**Single source of truth: `client/theme.css`**. All palette colors are CSS custom properties defined there. **Never write a raw hex value in `App.css` or any component.** Use the variable instead.
 
-| Role | Value | Usage |
+To change a color app-wide: edit `theme.css` only.
+
+| CSS Variable | Value | Usage |
 |---|---|---|
-| App background | `#0d1117` | `html`, `body`, `#root` |
-| Surface | `#161b22` | Panels, menus, composer, tab bars |
-| Elevated surface | `#21262d` | Hover states, selected rows, code inline bg |
-| Border | `#30363d` | All borders and dividers |
-| Muted border | `#484f58` | Subtle separators, loading dots |
-| Very muted text | `#6e7681` | Placeholder-level labels |
-| Secondary text | `#8b949e` | Descriptions, timestamps, muted labels |
-| Primary text | `#c9d1d9` | Default body text |
-| Bright text | `#e6edf3` | Emphasis, headings |
-| **Accent orange** | `#d4845a` | Commands, active states, primary interactive, resize handles |
-| Accent orange hover | `#e89a70` | Hover on orange elements |
-| Accent orange pressed | `#c57348` | Active/pressed orange |
-| Error / danger | `#f85149` | Errors, destructive actions |
-| Success / green | `#7ee787` | Success states |
-| Warning / yellow | `#e3b341` | Warnings |
-| Info / blue | `#79c0ff` | Info, links |
+| `--bg` | `#0d1117` | `html`, `body`, `#root` |
+| `--surface` | `#161b22` | Panels, menus, composer, tab bars |
+| `--surface-hover` | `#1c2128` | Hover backgrounds |
+| `--surface-hi` | `#21262d` | Selected rows, code inline bg |
+| `--border` | `#30363d` | All borders and dividers |
+| `--border-muted` | `#484f58` | Subtle separators, loading dots |
+| `--txt-dim` | `#6e7681` | Placeholder-level labels |
+| `--txt-sub` | `#8b949e` | Descriptions, timestamps, muted labels |
+| `--txt` | `#c9d1d9` | Default body text |
+| `--txt-bright` | `#e6edf3` | Emphasis, headings |
+| `--accent` | `#d4845a` | Commands, active states, primary interactive, resize handles |
+| `--accent-hover` | `#e89a70` | Hover on accent elements |
+| `--accent-dim` | `#c57348` | Pressed/active accent |
+| `--accent-rgb` | `212, 132, 90` | For `rgba(var(--accent-rgb), 0.1)` alpha variants |
+| `--error` | `#f85149` | Errors, destructive actions |
+| `--error-rgb` | `248, 81, 73` | For `rgba(var(--error-rgb), 0.1)` alpha variants |
+| `--success` | `#7ee787` | Success states |
+| `--warning` | `#e3b341` | Warnings |
+| `--info` | `#79c0ff` | Info, links |
 
-Syntax highlight colors (use only in code/token contexts):
-`#ff7b72`, `#a5d6ff`, `#d2a8ff`, `#bc8cff`, `#58a6ff`, `#aff3b7`
+Syntax variables (`--syn-red/blue/purple/violet/link/green`): use only in code/token rendering contexts.
+
+**rgba() usage pattern:**
+```css
+/* correct — works at any opacity without a new variable */
+background: rgba(var(--accent-rgb), 0.1);
+border-color: rgba(var(--accent-rgb), 0.5);
+
+/* wrong — never hardcode */
+background: rgba(212, 132, 90, 0.1);
+```
 
 ### Font Sizes
 

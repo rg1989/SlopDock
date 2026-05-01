@@ -4,10 +4,17 @@ import type { AppSettings, PttCombo, AgentConfig, TypeIndicatorSize } from '../h
 import { pttComboToLabel, DEFAULT_AGENT } from '../hooks/useSettings';
 import { VaultTab } from './VaultTab';
 
+const ShieldIcon: FC = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+  </svg>
+);
+
 interface SettingsModalProps {
   settings: AppSettings;
   onUpdate: (patch: Partial<AppSettings>) => void;
   onClose: () => void;
+  cwd?: string | null;
 }
 
 const InfoTip: FC<{ tip: string }> = ({ tip }) => {
@@ -180,10 +187,11 @@ const AgentCommandInput: FC<{
   );
 };
 
-type SettingsTab = 'display' | 'audio' | 'agent' | 'vault';
+type SettingsTab = 'display' | 'audio' | 'agent' | 'vault' | 'ai';
 
-export const SettingsModal: FC<SettingsModalProps> = ({ settings, onUpdate, onClose }) => {
+export const SettingsModal: FC<SettingsModalProps> = ({ settings, onUpdate, onClose, cwd }) => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('display');
+  const [guardianEnabled, setGuardianEnabled] = useState<boolean | null>(null);
   const [capturing, setCapturing] = useState(false);
   const [liveCombo, setLiveCombo] = useState<PttCombo | null>(null);
   const [agentDraft, setAgentDraft] = useState<{ command: string; args: string; label: string }>({
@@ -257,6 +265,24 @@ export const SettingsModal: FC<SettingsModalProps> = ({ settings, onUpdate, onCl
     return () => window.removeEventListener('keydown', handler);
   }, [capturing, onClose]);
 
+  useEffect(() => {
+    if (!cwd) return;
+    fetch(`/api/slop-guardian?cwd=${encodeURIComponent(cwd)}`)
+      .then(r => r.json())
+      .then(d => setGuardianEnabled(d.enabled ?? true))
+      .catch(() => setGuardianEnabled(true));
+  }, [cwd]);
+
+  function setGuardian(enabled: boolean) {
+    if (!cwd) return;
+    setGuardianEnabled(enabled);
+    fetch('/api/slop-guardian', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cwd, enabled }),
+    }).catch(() => {});
+  }
+
   const label = pttComboToLabel(settings.pttKey);
 
   function captureBtnLabel(): string {
@@ -292,13 +318,13 @@ export const SettingsModal: FC<SettingsModalProps> = ({ settings, onUpdate, onCl
 
         {/* Tab bar */}
         <div className="settings-tab-bar">
-          {(['display', 'audio', 'agent', 'vault'] as SettingsTab[]).map(tab => (
+          {(['display', 'audio', 'agent', 'vault', 'ai'] as SettingsTab[]).map(tab => (
             <button
               key={tab}
               className={`settings-tab${activeTab === tab ? ' settings-tab--active' : ''}`}
               onClick={() => setActiveTab(tab)}
             >
-              {tab === 'display' ? 'Display' : tab === 'audio' ? 'Audio' : tab === 'agent' ? 'Agent & Tools' : 'Vault'}
+              {tab === 'display' ? 'Display' : tab === 'audio' ? 'Audio' : tab === 'agent' ? 'Agent & Tools' : tab === 'vault' ? 'Vault' : 'AI Guardian'}
             </button>
           ))}
         </div>
@@ -412,6 +438,58 @@ export const SettingsModal: FC<SettingsModalProps> = ({ settings, onUpdate, onCl
 
           {/* Vault tab */}
           {activeTab === 'vault' && <VaultTab />}
+
+          {/* AI Guardian tab */}
+          {activeTab === 'ai' && (
+            <div className="settings-group">
+              <div className="settings-section settings-section--row">
+                <div className="settings-section-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <ShieldIcon />
+                  AI Guardian
+                  <InfoTip tip="When on, Claude watches for roadmap drift, skipped phases, untracked commits, and recurring issues — and prompts you before things get out of sync. Per-project. Off = work freely without alignment checks." />
+                </div>
+                <div className="pill-toggle">
+                  <button
+                    className={`pill-opt${guardianEnabled === true ? ' pill-opt--on' : ''}`}
+                    onClick={() => setGuardian(true)}
+                    disabled={!cwd}
+                  >On</button>
+                  <button
+                    className={`pill-opt${guardianEnabled === false ? ' pill-opt--on' : ''}`}
+                    onClick={() => setGuardian(false)}
+                    disabled={!cwd}
+                  >Off</button>
+                </div>
+              </div>
+
+              {!cwd && (
+                <div className="settings-section-desc">
+                  Open a project folder to configure AI Guardian.
+                </div>
+              )}
+
+              <div className="settings-info-card" style={{ marginTop: 8 }}>
+                <div className="settings-section-label" style={{ marginBottom: 6 }}>What AI Guardian does</div>
+                <div className="settings-section-desc" style={{ marginBottom: 0, lineHeight: 1.7 }}>
+                  <span style={{ display: 'block', marginBottom: 4 }}>
+                    <span style={{ color: 'var(--accent)' }}>Roadmap alignment</span> — flags work that isn't in the current phase plan and offers to add it before proceeding.
+                  </span>
+                  <span style={{ display: 'block', marginBottom: 4 }}>
+                    <span style={{ color: 'var(--accent)' }}>Phase discipline</span> — warns when jumping ahead of an open phase and asks for intent.
+                  </span>
+                  <span style={{ display: 'block', marginBottom: 4 }}>
+                    <span style={{ color: 'var(--accent)' }}>Commit traceability</span> — catches commits not mapped to a task, offers to retro-add them to the roadmap.
+                  </span>
+                  <span style={{ display: 'block', marginBottom: 4 }}>
+                    <span style={{ color: 'var(--accent)' }}>Second brain loop</span> — surfaces known pitfalls before you hit them, and proposes knowledge entries when you resolve something novel.
+                  </span>
+                  <span style={{ display: 'block' }}>
+                    Stored in <span style={{ color: 'var(--txt-bright)', fontFamily: 'monospace' }}>.slop/config.json</span> — per project, not global.
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Agent & Tools tab */}
           {activeTab === 'agent' && (<>
