@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Completed 05-01-PLAN.md — Wave 0 RED test scaffolds for Phase 5
-last_updated: "2026-05-01T17:51:20.496Z"
+stopped_at: Completed 05-02-PLAN.md — OnboardingModal component and health bar CSS
+last_updated: "2026-05-01T17:54:55.558Z"
 last_activity: "2026-04-30 - Completed quick task 1: add syntax colors and edit mode to file preview panel"
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 20
-  completed_plans: 17
+  completed_plans: 18
   percent: 100
 ---
 
@@ -65,6 +65,7 @@ Progress: [██████████] 100% (All Phases)
 | Phase 04-multi-session-tabs P03 | 8min | 2 tasks | 6 files |
 | Phase 04-multi-session-tabs P04 | 8min | 1 tasks | 4 files |
 | Phase 05-project-onboarding-wizard-and-setup-health-check P01 | 2 | 2 tasks | 3 files |
+| Phase 05-project-onboarding-wizard-and-setup-health-check P02 | 1min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -117,6 +118,8 @@ Recent decisions affecting current work:
 - [Phase 04-multi-session-tabs]: VoiceBar stays app-level; routes to active session via activeSendInputRef mutable ref — avoids threading audio props through SessionPane
 - [Phase 04-multi-session-tabs]: Pre-existing test/implementation drift in FileTree, FilePreview, usePty, useSessionManager tests fixed inline to unblock checkpoint gate
 - [Phase 05-project-onboarding-wizard-and-setup-health-check]: Wave 0 RED pattern extended to Phase 5 — same @ts-expect-error technique from Phase 02 and 04, import errors confirm modules don't exist yet
+- [Phase 05-02]: Gate OnboardingModal visibility on stable initialPath (useState initial value), not cwd — cwd may be null momentarily even for returning users
+- [Phase 05-02]: onboardingDone state tracked in App instead of re-reading localStorage on every render — cleaner and idiomatic React
 
 ### Roadmap Evolution
 
@@ -140,6 +143,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-01T17:51:15.140Z
-Stopped at: Completed 05-01-PLAN.md — Wave 0 RED test scaffolds for Phase 5
+Last session: 2026-05-01T17:54:55.555Z
+Stopped at: Completed 05-02-PLAN.md — OnboardingModal component and health bar CSS
 Resume file: None
