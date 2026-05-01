@@ -44,6 +44,8 @@ type RoadmapResponse = { exists: false } | GsdRoadmapData;
 interface GsdRoadmapProps {
   cwd: string;
   onOpenFile: (path: string, isPreview: boolean) => void;
+  /** Absolute path of the file currently open in the editor */
+  activeFilePath?: string;
 }
 
 const IconCheck = () => (
@@ -101,7 +103,7 @@ function phaseColor(phase: GsdPhase): string {
   return '#484f58';
 }
 
-export const GsdRoadmap: FC<GsdRoadmapProps> = ({ cwd, onOpenFile }) => {
+export const GsdRoadmap: FC<GsdRoadmapProps> = ({ cwd, onOpenFile, activeFilePath }) => {
   const [data, setData] = useState<RoadmapResponse | null>(null);
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
   const [pendingDelete, setPendingDelete] = useState<{
@@ -111,23 +113,49 @@ export const GsdRoadmap: FC<GsdRoadmapProps> = ({ cwd, onOpenFile }) => {
   } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const loadRoadmap = useCallback(() => {
-    setData(null);
+  const fetchRoadmap = useCallback((silent = false) => {
+    if (!silent) setData(null);
     fetch(`/api/gsd-roadmap?cwd=${encodeURIComponent(cwd)}`)
       .then(r => r.json())
       .then(d => {
         setData(d as RoadmapResponse);
-        if (d.exists) {
+        if (d.exists && !silent) {
           const rd = d as GsdRoadmapData;
           // Always collapse completed phases; only active ones stay expanded
           const toCollapse = new Set(rd.phases.filter((p: GsdPhase) => p.completed).map((p: GsdPhase) => p.number));
           setCollapsed(toCollapse);
         }
       })
-      .catch(() => setData({ exists: false }));
+      .catch(() => { if (!silent) setData({ exists: false }); });
   }, [cwd]);
 
-  useEffect(() => { loadRoadmap(); }, [loadRoadmap]);
+  const loadRoadmap = useCallback(() => fetchRoadmap(false), [fetchRoadmap]);
+
+  useEffect(() => { fetchRoadmap(); }, [fetchRoadmap]);
+
+  useEffect(() => {
+    const id = setInterval(() => fetchRoadmap(true), 3000);
+    return () => clearInterval(id);
+  }, [fetchRoadmap]);
+
+  // Auto-expand the phase that contains the active file
+  useEffect(() => {
+    if (!activeFilePath || !data || !('phases' in data)) return;
+    const rd = data as GsdRoadmapData;
+    const owningPhase = rd.phases.find(phase =>
+      phase.plans.some(p => p.planPath === activeFilePath) ||
+      phase.researchPath === activeFilePath ||
+      phase.verificationPath === activeFilePath
+    );
+    if (owningPhase) {
+      setCollapsed(prev => {
+        if (!prev.has(owningPhase.number)) return prev;
+        const next = new Set(prev);
+        next.delete(owningPhase.number);
+        return next;
+      });
+    }
+  }, [activeFilePath, data]);
 
   const handleConfirmDelete = async () => {
     if (!pendingDelete) return;
@@ -185,7 +213,10 @@ export const GsdRoadmap: FC<GsdRoadmapProps> = ({ cwd, onOpenFile }) => {
 
   const rd = data as GsdRoadmapData;
   const { milestone, milestoneName, status, progress, phases, quickTasks } = rd;
-  const pct = progress.percent || (progress.totalPlans > 0 ? Math.round((progress.completedPlans / progress.totalPlans) * 100) : 0);
+  const allPlans = phases.flatMap(p => p.plans);
+  const actualCompleted = allPlans.filter(p => p.completed).length;
+  const actualTotal = allPlans.length;
+  const pct = actualTotal > 0 ? Math.round((actualCompleted / actualTotal) * 100) : 0;
   const color = statusColor(status);
 
   return (
@@ -206,7 +237,7 @@ export const GsdRoadmap: FC<GsdRoadmapProps> = ({ cwd, onOpenFile }) => {
           <span className="rm-progress-pct" style={{ color }}>{pct}%</span>
         </div>
         <div className="rm-progress-stats">
-          {progress.completedPlans}/{progress.totalPlans} plans · {progress.completedPhases}/{progress.totalPhases} phases
+          {actualCompleted}/{actualTotal} plans · {phases.filter(p => p.completed).length}/{phases.length} phases
         </div>
       </div>
 
@@ -222,7 +253,7 @@ export const GsdRoadmap: FC<GsdRoadmapProps> = ({ cwd, onOpenFile }) => {
             {quickTasks.map(task => (
               <div
                 key={task.number}
-                className={`rm-quick-item${task.planPath ? ' rm-quick-item--link' : ''}`}
+                className={`rm-quick-item${task.planPath ? ' rm-quick-item--link' : ''}${task.planPath && activeFilePath === task.planPath ? ' rm-item--active' : ''}`}
                 onClick={() => openFile(task.planPath)}
                 title={task.planPath ? 'Open plan in editor' : undefined}
               >
@@ -293,7 +324,7 @@ export const GsdRoadmap: FC<GsdRoadmapProps> = ({ cwd, onOpenFile }) => {
                     {phase.plans.map(plan => (
                       <div
                         key={plan.id}
-                        className={`rm-plan-item${plan.planPath ? ' rm-plan-item--link' : ''}`}
+                        className={`rm-plan-item${plan.planPath ? ' rm-plan-item--link' : ''}${plan.planPath && activeFilePath === plan.planPath ? ' rm-item--active' : ''}`}
                         onClick={() => openFile(plan.planPath)}
                         title={plan.planPath ? 'Open plan in editor' : undefined}
                       >
@@ -312,9 +343,9 @@ export const GsdRoadmap: FC<GsdRoadmapProps> = ({ cwd, onOpenFile }) => {
                     ))}
                     {phase.researchPath && (
                       <div className="rm-phase-docs">
-                        <button className="rm-doc-link" onClick={() => openFile(phase.researchPath)}>Research</button>
+                        <button className={`rm-doc-link${activeFilePath === phase.researchPath ? ' rm-item--active' : ''}`} onClick={() => openFile(phase.researchPath)}>Research</button>
                         {phase.verificationPath && (
-                          <button className="rm-doc-link" onClick={() => openFile(phase.verificationPath)}>Verification</button>
+                          <button className={`rm-doc-link${activeFilePath === phase.verificationPath ? ' rm-item--active' : ''}`} onClick={() => openFile(phase.verificationPath)}>Verification</button>
                         )}
                       </div>
                     )}

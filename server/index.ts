@@ -562,6 +562,117 @@ app.post('/api/fs/dir', async (req, res) => {
   }
 });
 
+// ── Second Brain API ────────────────────────────────────────────────────────
+
+function parseFrontmatter(content: string): { meta: Record<string, unknown>; body: string } {
+  const match = content.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+  if (!match) return { meta: {}, body: content.trim() };
+  const meta: Record<string, unknown> = {};
+  for (const line of match[1].split('\n')) {
+    const colonIdx = line.indexOf(':');
+    if (colonIdx === -1) continue;
+    const key = line.slice(0, colonIdx).trim();
+    const raw = line.slice(colonIdx + 1).trim();
+    if ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))) {
+      meta[key] = raw.slice(1, -1);
+    } else if (raw.startsWith('[') && raw.endsWith(']')) {
+      meta[key] = raw.slice(1, -1).split(',').map(v => v.trim().replace(/^["']|["']$/g, '')).filter(Boolean);
+    } else {
+      meta[key] = raw;
+    }
+  }
+  return { meta, body: match[2].trim() };
+}
+
+function serializeFrontmatter(name: string, description: string, type: string, tags: string[], created: string, body: string): string {
+  const tagsStr = tags.length ? `[${tags.map(t => `"${t}"`).join(', ')}]` : '[]';
+  return `---\nname: "${name}"\ndescription: "${description}"\ntype: "${type}"\ntags: ${tagsStr}\ncreated: "${created}"\n---\n\n${body}`;
+}
+
+// GET /api/brain — list all brain entries (metadata only)
+app.get('/api/brain', async (req, res) => {
+  const { cwd } = req.query as { cwd?: string };
+  if (!cwd) { res.status(400).json({ error: 'cwd required' }); return; }
+  const brainDir = path.join(path.resolve(cwd), '.brain');
+  try { await fsAccess(brainDir); } catch { res.json({ entries: [] }); return; }
+  try {
+    const files = (await readdir(brainDir)).filter(f => f.endsWith('.md'));
+    const entries = await Promise.all(files.map(async f => {
+      const content = await readFile(path.join(brainDir, f), 'utf-8');
+      const { meta } = parseFrontmatter(content);
+      return {
+        id: f.replace(/\.md$/, ''),
+        name: (meta.name as string) ?? f.replace(/\.md$/, ''),
+        description: (meta.description as string) ?? '',
+        type: (meta.type as string) ?? 'note',
+        tags: (meta.tags as string[]) ?? [],
+        created: (meta.created as string) ?? '',
+      };
+    }));
+    res.json({ entries });
+  } catch (err) { res.status(500).json({ error: String(err) }); }
+});
+
+// GET /api/brain/entry — get single brain entry with full body
+app.get('/api/brain/entry', async (req, res) => {
+  const { cwd, id } = req.query as { cwd?: string; id?: string };
+  if (!cwd || !id) { res.status(400).json({ error: 'cwd and id required' }); return; }
+  const entryPath = path.join(path.resolve(cwd), '.brain', `${id}.md`);
+  try {
+    const raw = await readFile(entryPath, 'utf-8');
+    const { meta, body } = parseFrontmatter(raw);
+    res.json({ id, meta, body, raw });
+  } catch { res.status(404).json({ error: 'Entry not found' }); }
+});
+
+// POST /api/brain — create a new brain entry
+app.post('/api/brain', async (req, res) => {
+  const { cwd, name, description, type, tags, body } = req.body as {
+    cwd?: string; name?: string; description?: string; type?: string; tags?: string[]; body?: string;
+  };
+  if (!cwd || !name) { res.status(400).json({ error: 'cwd and name required' }); return; }
+  const brainDir = path.join(path.resolve(cwd), '.brain');
+  await mkdir(brainDir, { recursive: true });
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'entry';
+  const today = new Date().toISOString().slice(0, 10);
+  const content = serializeFrontmatter(name, description ?? '', type ?? 'note', tags ?? [], today, body ?? '');
+  await writeFile(path.join(brainDir, `${slug}.md`), content, 'utf-8');
+  res.json({ ok: true, id: slug });
+});
+
+// PUT /api/brain/entry — update an existing brain entry
+app.put('/api/brain/entry', async (req, res) => {
+  const { cwd, id, name, description, type, tags, body } = req.body as {
+    cwd?: string; id?: string; name?: string; description?: string; type?: string; tags?: string[]; body?: string;
+  };
+  if (!cwd || !id) { res.status(400).json({ error: 'cwd and id required' }); return; }
+  const entryPath = path.join(path.resolve(cwd), '.brain', `${id}.md`);
+  try {
+    const existing = await readFile(entryPath, 'utf-8');
+    const { meta } = parseFrontmatter(existing);
+    const content = serializeFrontmatter(
+      name ?? (meta.name as string) ?? id,
+      description ?? (meta.description as string) ?? '',
+      type ?? (meta.type as string) ?? 'note',
+      tags ?? (meta.tags as string[]) ?? [],
+      (meta.created as string) ?? new Date().toISOString().slice(0, 10),
+      body ?? '',
+    );
+    await writeFile(entryPath, content, 'utf-8');
+    res.json({ ok: true });
+  } catch { res.status(404).json({ error: 'Entry not found' }); }
+});
+
+// DELETE /api/brain/entry — delete a brain entry
+app.delete('/api/brain/entry', async (req, res) => {
+  const { cwd, id } = req.body as { cwd?: string; id?: string };
+  if (!cwd || !id) { res.status(400).json({ error: 'cwd and id required' }); return; }
+  try {
+    await rm(path.join(path.resolve(cwd), '.brain', `${id}.md`), { force: true });
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: String(err) }); }
+});
+
 // POST /api/fs/file — create an empty file (fails if already exists)
 app.post('/api/fs/file', async (req, res) => {
   const { path: targetPath } = req.body as { path?: string };
@@ -628,6 +739,44 @@ app.post('/api/gsd-track-phase', async (req, res) => {
   } catch (err) {
     console.error('gsd-track-phase error:', err);
     res.status(500).json({ error: String(err) });
+  }
+});
+
+// GET /api/git-unpushed — list commits not yet pushed to remote
+app.get('/api/git-unpushed', async (req, res) => {
+  const { cwd } = req.query as { cwd?: string };
+  if (!cwd) { res.status(400).json({ error: 'cwd required' }); return; }
+  try {
+    const { stdout } = await execFileAsync('git', [
+      '-C', path.resolve(cwd),
+      'log', '@{u}..HEAD',
+      '--pretty=format:%h\t%s',
+    ]);
+    const lines = stdout.split('\n').filter(Boolean);
+    const commits = lines.map(line => {
+      const tabIdx = line.indexOf('\t');
+      return { hash: line.slice(0, tabIdx), message: line.slice(tabIdx + 1) };
+    });
+    res.json({ commits });
+  } catch (err) {
+    const errStr = String(err);
+    if (errStr.includes('@{u}') || errStr.includes('no upstream') || errStr.includes('no tracking')) {
+      res.json({ commits: [], noUpstream: true });
+    } else {
+      res.json({ commits: [], error: errStr });
+    }
+  }
+});
+
+// POST /api/git-push — push current branch to remote
+app.post('/api/git-push', async (req, res) => {
+  const { cwd } = req.body as { cwd?: string };
+  if (!cwd) { res.status(400).json({ error: 'cwd required' }); return; }
+  try {
+    await execFileAsync('git', ['-C', path.resolve(cwd), 'push']);
+    res.json({ ok: true });
+  } catch (err) {
+    res.json({ ok: false, error: String(err) });
   }
 });
 

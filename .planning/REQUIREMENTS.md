@@ -1,4 +1,4 @@
-# Requirements: ClaudeTalk
+# Requirements: SlopDock
 
 **Defined:** 2026-04-30
 **Core Value:** A single-user power tool that makes working with Claude CLI feel as fluid as a native IDE — voice in, voice out, files at your fingertips, and full terminal fidelity.
@@ -35,12 +35,12 @@
 
 ### Multi-Session
 
-- [ ] **SESS-01**: User can spawn multiple terminal sessions within the same workspace (soft cap of 8)
-- [ ] **SESS-02**: User can navigate between sessions via a tab bar above the terminal area
-- [ ] **SESS-03**: Each session tab shows a live status indicator (connecting / waiting / working / done / error)
-- [ ] **SESS-04**: Session name is derived from the first prompt the user sends in that session
-- [ ] **SESS-05**: Closed session metadata (name, status, cwd, timestamps) persists to localStorage and survives page reload
-- [ ] **SESS-06**: Protocol and server architecture are structured for future PTY reconnect — stable sessionId carried from the start message
+- [x] **SESS-01**: User can spawn multiple terminal sessions within the same workspace (soft cap of 8)
+- [x] **SESS-02**: User can navigate between sessions via a tab bar above the terminal area
+- [x] **SESS-03**: Each session tab shows a live status indicator (connecting / waiting / working / done / error)
+- [x] **SESS-04**: Session name is derived from the first prompt the user sends in that session
+- [x] **SESS-05**: Closed session metadata (name, status, cwd, timestamps) persists to localStorage and survives page reload
+- [x] **SESS-06**: Protocol and server architecture are structured for future PTY reconnect — stable sessionId carried from the start message
 
 ## v2 Requirements
 

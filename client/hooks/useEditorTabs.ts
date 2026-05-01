@@ -13,6 +13,26 @@ async function fetchFileContent(cwd: string, filePath: string): Promise<FilePrev
   }
 }
 
+async function fetchBrainEntry(cwd: string, id: string): Promise<FilePreviewData> {
+  try {
+    const res = await fetch(`/api/brain/entry?cwd=${encodeURIComponent(cwd)}&id=${encodeURIComponent(id)}`);
+    if (!res.ok) return { type: 'not-found' };
+    const json = await res.json() as { meta: Record<string, unknown>; body: string };
+    return {
+      type: 'brain',
+      id,
+      name: (json.meta.name as string) ?? id,
+      description: (json.meta.description as string) ?? '',
+      entryType: (json.meta.type as string) ?? 'note',
+      tags: (json.meta.tags as string[]) ?? [],
+      created: (json.meta.created as string) ?? '',
+      body: json.body,
+    };
+  } catch {
+    return { type: 'not-found' };
+  }
+}
+
 export interface UseEditorTabsReturn {
   tabs: EditorTab[];
   activeTabId: string | null;
@@ -22,6 +42,8 @@ export interface UseEditorTabsReturn {
   setActiveTabId: (id: string | null) => void;
   openFile: (path: string, isPreview: boolean) => Promise<void>;
   openDiff: (filePath: string, staged: boolean) => Promise<void>;
+  openBrainEntry: (id: string, isPreview: boolean) => Promise<void>;
+  updateTabData: (id: string, data: FilePreviewData) => void;
   closeTab: (id: string) => void;
   promoteTab: (id: string) => void;
   /** Restore tabs from persisted UI state (called on cwd change) */
@@ -35,7 +57,7 @@ export function useEditorTabs(cwd: string | null): UseEditorTabsReturn {
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [editingTabId, setEditingTabId] = useState<string | null>(null);
 
-  const activeFilePath = tabs.find(t => t.id === activeTabId)?.path ?? null;
+  const activeFilePath = tabs.find(t => t.id === activeTabId && t.tabType !== 'brain')?.path ?? null;
 
   const openFile = useCallback(async (path: string, isPreview: boolean) => {
     if (!cwd) return;
@@ -83,11 +105,10 @@ export function useEditorTabs(cwd: string | null): UseEditorTabsReturn {
     });
     setActiveTabId(tabId);
 
-    // Only fetch if not already loaded
     setTabs(prev => {
       const existing = prev.find(t => t.id === tabId);
-      if (existing?.data) return prev; // already loaded
-      return prev; // will fetch below
+      if (existing?.data) return prev;
+      return prev;
     });
 
     const relPath = filePath.startsWith(cwd) ? filePath.slice(cwd.length + 1) : filePath;
@@ -97,6 +118,37 @@ export function useEditorTabs(cwd: string | null): UseEditorTabsReturn {
     setTabs(prev => prev.map(t => t.id === tabId ? { ...t, data } : t));
     void relPath;
   }, [cwd]);
+
+  const openBrainEntry = useCallback(async (id: string, isPreview: boolean) => {
+    if (!cwd) return;
+    const tabId = `brain:${id}`;
+
+    if (isPreview) {
+      setTabs(prev => {
+        if (prev.some(t => t.id === tabId)) return prev;
+        const existingPreviewIdx = prev.findIndex(t => t.isPreview);
+        if (existingPreviewIdx !== -1) {
+          const updated = [...prev];
+          updated[existingPreviewIdx] = { id: tabId, path: id, isPreview: true, tabType: 'brain', data: null };
+          return updated;
+        }
+        return [...prev, { id: tabId, path: id, isPreview: true, tabType: 'brain', data: null }];
+      });
+    } else {
+      setTabs(prev => {
+        if (prev.some(t => t.id === tabId)) return prev;
+        return [...prev, { id: tabId, path: id, isPreview: false, tabType: 'brain', data: null }];
+      });
+    }
+    setActiveTabId(tabId);
+
+    const data = await fetchBrainEntry(cwd, id);
+    setTabs(prev => prev.map(t => t.id === tabId ? { ...t, data } : t));
+  }, [cwd]);
+
+  const updateTabData = useCallback((id: string, data: FilePreviewData) => {
+    setTabs(prev => prev.map(t => t.id === id ? { ...t, data } : t));
+  }, []);
 
   const closeTab = useCallback((id: string) => {
     setTabs((prev) => {
@@ -122,14 +174,19 @@ export function useEditorTabs(cwd: string | null): UseEditorTabsReturn {
     saved: { tabs: Array<{ path: string; isPreview: boolean }>; activeTabId: string | null },
     cwdForFetch: string,
   ) => {
-    const skeletonTabs: EditorTab[] = saved.tabs.map(t => ({
+    // Exclude brain tabs from restore — they're accessed via the brain panel
+    const fileTabs = saved.tabs.filter(t => !t.path.startsWith('brain:'));
+    const skeletonTabs: EditorTab[] = fileTabs.map(t => ({
       id: t.path, path: t.path, isPreview: t.isPreview, data: null,
     }));
     setTabs(skeletonTabs);
-    setActiveTabId(saved.activeTabId);
+    const restoredActive = saved.activeTabId && !saved.activeTabId.startsWith('brain:')
+      ? saved.activeTabId
+      : (skeletonTabs[0]?.id ?? null);
+    setActiveTabId(restoredActive);
     setEditingTabId(null);
     (async () => {
-      for (const tab of saved.tabs) {
+      for (const tab of fileTabs) {
         const data = await fetchFileContent(cwdForFetch, tab.path);
         setTabs(prev => prev.map(t => t.id === tab.path ? { ...t, data } : t));
       }
@@ -150,6 +207,8 @@ export function useEditorTabs(cwd: string | null): UseEditorTabsReturn {
     setActiveTabId,
     openFile,
     openDiff,
+    openBrainEntry,
+    updateTabData,
     closeTab,
     promoteTab,
     restoreFromSaved,

@@ -75,7 +75,7 @@ export function Terminal({ onReady, sendResize }: TerminalProps) {
   return (
     <div
       ref={containerRef}
-      style={{ width: '100%', height: '100%' }}
+      style={{ width: '100%', height: '100%', background: '#0d1117' }}
     />
   );
 }

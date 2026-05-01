@@ -30,9 +30,10 @@ describe('SessionTabBar', () => {
       <SessionTabBar
         sessions={sessions}
         activeId="session-1"
-        onSetActive={vi.fn()}
+        canSpawn={true} onSetActive={vi.fn()}
         onClose={vi.fn()}
         onSpawn={vi.fn()}
+        onOpenHistory={vi.fn()}
       />
     );
 
@@ -46,9 +47,10 @@ describe('SessionTabBar', () => {
       <SessionTabBar
         sessions={[]}
         activeId={null}
-        onSetActive={vi.fn()}
+        canSpawn={true} onSetActive={vi.fn()}
         onClose={vi.fn()}
         onSpawn={vi.fn()}
+        onOpenHistory={vi.fn()}
       />
     );
 
@@ -63,9 +65,10 @@ describe('SessionTabBar', () => {
       <SessionTabBar
         sessions={sessions}
         activeId="session-2"
-        onSetActive={vi.fn()}
+        canSpawn={true} onSetActive={vi.fn()}
         onClose={vi.fn()}
         onSpawn={vi.fn()}
+        onOpenHistory={vi.fn()}
       />
     );
 
@@ -86,9 +89,10 @@ describe('SessionTabBar', () => {
       <SessionTabBar
         sessions={sessions}
         activeId="session-1"
-        onSetActive={onSetActive}
+        canSpawn={true} onSetActive={onSetActive}
         onClose={vi.fn()}
         onSpawn={vi.fn()}
+        onOpenHistory={vi.fn()}
       />
     );
 
@@ -104,9 +108,10 @@ describe('SessionTabBar', () => {
       <SessionTabBar
         sessions={sessions}
         activeId="session-1"
-        onSetActive={vi.fn()}
+        canSpawn={true} onSetActive={vi.fn()}
         onClose={onClose}
         onSpawn={vi.fn()}
+        onOpenHistory={vi.fn()}
       />
     );
 
@@ -120,7 +125,8 @@ describe('SessionTabBar', () => {
   });
 
   it('clicking close button does not propagate to tab click (onSetActive not called)', () => {
-    const sessions = makeSessions(1);
+    // needs 2 sessions so the tab list renders (showTabs = sessions.length > 1)
+    const sessions = makeSessions(2);
     const onSetActive = vi.fn();
     const onClose = vi.fn();
 
@@ -128,9 +134,10 @@ describe('SessionTabBar', () => {
       <SessionTabBar
         sessions={sessions}
         activeId={null}
-        onSetActive={onSetActive}
+        canSpawn={true} onSetActive={onSetActive}
         onClose={onClose}
         onSpawn={vi.fn()}
+        onOpenHistory={vi.fn()}
       />
     );
 
@@ -143,21 +150,24 @@ describe('SessionTabBar', () => {
   });
 
   it('tab has status class matching session status', () => {
+    // needs 2 sessions so the tab list renders (showTabs = sessions.length > 1)
     const sessions: SessionEntry[] = [
       { id: 'session-1', name: 'Session 1', status: 'working', cwd: '/tmp', createdAt: Date.now() },
+      { id: 'session-2', name: 'Session 2', status: 'waiting', cwd: '/tmp', createdAt: Date.now() },
     ];
 
     const { container } = render(
       <SessionTabBar
         sessions={sessions}
         activeId="session-1"
-        onSetActive={vi.fn()}
+        canSpawn={true} onSetActive={vi.fn()}
         onClose={vi.fn()}
         onSpawn={vi.fn()}
+        onOpenHistory={vi.fn()}
       />
     );
 
-    // Status chip should have status--working class
+    // Status chip for session-1 should have status--working class
     const statusChip = container.querySelector('.status--working');
     expect(statusChip).not.toBeNull();
   });

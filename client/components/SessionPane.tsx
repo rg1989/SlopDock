@@ -5,19 +5,13 @@ import type { SessionStatus } from '../hooks/useSessionManager';
 import type { AgentConfig } from '../hooks/useSettings';
 import { useDragResize } from '../hooks/useDragResize';
 import { Terminal as TerminalComponent } from './Terminal';
-import { EditorTabBar } from './EditorTabBar';
 import { AttachBar } from './AttachBar';
 import { Composer } from './Composer';
-import { FilePreview } from './FilePreview';
-import { BrainEntryView } from './BrainEntryView';
-import type { BrainEntryData } from './BrainEntryView';
+import type { EditorTab } from './EditorTabBar';
+import type { FilePreviewData } from './FilePreview';
 
-const PREVIEW_MIN = 180;
-const PREVIEW_DEFAULT = 320;
 const COMPOSER_MIN = 80;
 const COMPOSER_DEFAULT = 150;
-const TERMINAL_MIN = 140;
-const RESIZE_HANDLE_WIDTH = 4;
 
 export interface SessionPaneActions {
   sendInput: (data: string) => void;
@@ -28,6 +22,13 @@ export interface SessionPaneActions {
   activeFilePath: string | null | undefined;
   activeTabId: string | null;
   attachments: string[];
+  // Editor panel state (hoisted to App level)
+  tabs: EditorTab[];
+  editingTabId: string | null;
+  setActiveTabId: (id: string | null) => void;
+  closeTab: (id: string) => void;
+  promoteTab: (id: string) => void;
+  updateTabData: (id: string, data: FilePreviewData) => void;
 }
 
 interface SessionPaneProps {
@@ -67,9 +68,7 @@ export function SessionPane({
   const [terminal, setTerminal] = useState<XTerminal | null>(null);
   const hasNamedRef = useRef(false);
 
-  // Drag-resize for preview panel and composer — each pane has its own
-  const previewMaxRef = useRef<number>(Infinity);
-  const preview = useDragResize(PREVIEW_DEFAULT, PREVIEW_MIN, 'right', previewMaxRef);
+  // Drag-resize for composer only — editor panel is hoisted to App level
   const composerPanel = useDragResize(COMPOSER_DEFAULT, COMPOSER_MIN, 'up');
 
   const cols = terminal?.cols ?? 80;
@@ -102,7 +101,7 @@ export function SessionPane({
     if (isActive) session.sendResize(c, r);
   }, [isActive, session]);
 
-  // Register this pane's actions with App when active
+  // Register this pane's actions with App when active — editor panel is rendered at App level
   useEffect(() => {
     if (!isActive) return;
     onRegisterActions?.({
@@ -114,28 +113,24 @@ export function SessionPane({
       activeFilePath: session.activeFilePath,
       activeTabId: session.activeTabId,
       attachments: session.attachments,
+      tabs: session.tabs,
+      editingTabId: session.editingTabId,
+      setActiveTabId: session.setActiveTabId,
+      closeTab: session.closeTab,
+      promoteTab: session.promoteTab,
+      updateTabData: session.updateTabData,
     });
   }); // intentionally no deps — re-register on every render so actions stay fresh
 
-  const previewVisible = session.tabs.length > 0;
-  previewMaxRef.current = window.innerWidth - TERMINAL_MIN - RESIZE_HANDLE_WIDTH - (previewVisible ? RESIZE_HANDLE_WIDTH : 0);
-
   return (
     <div style={{ display: isActive ? 'flex' : 'none', flex: 1, minHeight: 0, overflow: 'hidden' }}>
-      {/* Terminal + composer column */}
       <div style={{ display: 'flex', flex: 1, flexDirection: 'column', minHeight: 0, minWidth: 0 }}>
         <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
           <TerminalComponent onReady={handleReady} sendResize={handleSendResize} />
         </div>
-        <div
-          className="resize-handle--h"
-          onMouseDown={composerPanel.onMouseDown}
-        />
+        <div className="resize-handle--h" onMouseDown={composerPanel.onMouseDown} />
         <div className="composer-bottom" style={{ height: composerPanel.width }}>
-          <AttachBar
-            attachments={session.attachments}
-            onRemove={session.removeAttachment}
-          />
+          <AttachBar attachments={session.attachments} onRemove={session.removeAttachment} />
           <div className="composer-area">
             <Composer
               ref={composerRef}
@@ -149,49 +144,6 @@ export function SessionPane({
           </div>
         </div>
       </div>
-
-      {/* Preview panel column (conditionally shown) */}
-      {previewVisible && (
-        <>
-          <div
-            className={`resize-handle${preview.isDragging ? ' dragging' : ''}`}
-            onMouseDown={preview.onMouseDown}
-          />
-          <div className="preview-panel" style={{ width: preview.width }}>
-            <EditorTabBar
-              tabs={session.tabs}
-              activeId={session.activeTabId}
-              onSelect={session.setActiveTabId}
-              onClose={session.closeTab}
-              onPromote={session.promoteTab}
-            />
-            {(() => {
-              const tab = session.tabs.find((t) => t.id === session.activeTabId);
-              if (!tab) return null;
-              if (tab.tabType === 'brain' && tab.data?.type === 'brain') {
-                return (
-                  <BrainEntryView
-                    data={tab.data as BrainEntryData}
-                    cwd={cwd}
-                    onClose={() => session.closeTab(tab.id)}
-                    onDeleted={() => brainRefreshTrigger?.()}
-                    onUpdated={(updated) => session.updateTabData(tab.id, updated)}
-                  />
-                );
-              }
-              return (
-                <FilePreview
-                  data={tab.data}
-                  filePath={tab.path}
-                  cwd={cwd}
-                  initialEditing={session.activeTabId === session.editingTabId}
-                  onPromote={() => session.promoteTab(session.activeTabId!)}
-                />
-              );
-            })()}
-          </div>
-        </>
-      )}
     </div>
   );
 }

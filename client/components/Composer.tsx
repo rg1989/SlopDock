@@ -1,4 +1,5 @@
-import { useState, KeyboardEvent, forwardRef } from 'react';
+import { useState, useRef, useCallback, useEffect, KeyboardEvent, forwardRef } from 'react';
+import { createPortal } from 'react-dom';
 import SlashMenu, { SLASH_COMMANDS, SlashCommand } from './SlashMenu';
 
 interface ComposerProps {
@@ -19,6 +20,25 @@ export const Composer = forwardRef<HTMLTextAreaElement, ComposerProps>(
   const [slashQuery, setSlashQuery] = useState<string | null>(null);
   const [slashAnchor, setSlashAnchor] = useState(0);
   const [menuIndex, setMenuIndex] = useState(0);
+  // Textarea rect for portal positioning
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [menuRect, setMenuRect] = useState<DOMRect | null>(null);
+
+  const updateMenuRect = useCallback(() => {
+    setMenuRect(textareaRef.current?.getBoundingClientRect() ?? null);
+  }, []);
+
+  useEffect(() => {
+    if (slashQuery !== null) {
+      updateMenuRect();
+      window.addEventListener('scroll', updateMenuRect, true);
+      window.addEventListener('resize', updateMenuRect);
+      return () => {
+        window.removeEventListener('scroll', updateMenuRect, true);
+        window.removeEventListener('resize', updateMenuRect);
+      };
+    }
+  }, [slashQuery, updateMenuRect]);
 
   // Filtered items — derived, not state
   const menuItems = slashQuery === null
@@ -134,28 +154,38 @@ export const Composer = forwardRef<HTMLTextAreaElement, ComposerProps>(
     setValue('');
   };
 
+  // Merge external ref with internal textareaRef
+  const setRefs = useCallback((el: HTMLTextAreaElement | null) => {
+    (textareaRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = el;
+    if (typeof ref === 'function') ref(el);
+    else if (ref) (ref as React.MutableRefObject<HTMLTextAreaElement | null>).current = el;
+  }, [ref]);
+
   return (
-    <div style={{ position: 'relative' }}>
-      {slashQuery !== null && menuItems.length > 0 && (
+    <div style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      {slashQuery !== null && menuItems.length > 0 && menuRect && createPortal(
         <SlashMenu
           items={menuItems}
           selectedIndex={menuIndex}
           onSelect={insertCommand}
           onClose={() => setSlashQuery(null)}
-        />
+          anchorRect={menuRect}
+        />,
+        document.body
       )}
       <textarea
-        ref={ref}
+        ref={setRefs}
         className="composer-input"
         value={value}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
         disabled={disabled}
         placeholder="Type a message… (Enter to send, Shift+Enter for newline)"
-        rows={3}
         style={{
           width: '100%',
-          resize: 'vertical',
+          resize: 'none',
+          flex: 1,
+          minHeight: 0,
           fontFamily: 'monospace',
           fontSize: '14px',
           padding: '8px 36px 8px 8px',

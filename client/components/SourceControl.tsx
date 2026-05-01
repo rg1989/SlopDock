@@ -7,6 +7,7 @@ interface SourceControlProps {
   gitStatus: GitStatus;
   onRefresh: () => void;
   onOpenDiff: (filePath: string, staged: boolean) => void;
+  onAttach?: (path: string) => void;
 }
 
 function statusLabel(s: string): string {
@@ -80,7 +81,9 @@ interface SectionProps {
   files: GitFileEntry[];
   selected: Set<string>;
   section: 'staged' | 'unstaged';
+  cwd: string;
   onFileClick: (file: GitFileEntry, section: 'staged' | 'unstaged', e: React.MouseEvent) => void;
+  onAttach?: (path: string) => void;
   onStageAll?: () => void;
   onUnstageAll?: () => void;
   onStageSelected?: () => void;
@@ -90,13 +93,14 @@ interface SectionProps {
 }
 
 function Section({
-  title, count, files, selected, section,
-  onFileClick, onStageAll, onUnstageAll,
+  title, count, files, selected, section, cwd,
+  onFileClick, onAttach, onStageAll, onUnstageAll,
   onStageSelected, onUnstageSelected, onDiscardSelected,
   actionLoading,
 }: SectionProps) {
   const [collapsed, setCollapsed] = useState(section === 'staged');
   const hasSelection = selected.size > 0;
+  const clickCountRef = useRef<Record<string, { count: number; timer: ReturnType<typeof setTimeout> | null }>>({});
 
   if (files.length === 0) return null;
 
@@ -159,8 +163,20 @@ function Section({
                 <li
                   key={file.path}
                   className={`sc-file${isSelected ? ' sc-file--selected' : ''}`}
-                  title={file.path}
-                  onClick={e => onFileClick(file, section, e)}
+                  title={`${file.path} — triple-click to add as context`}
+                  onClick={e => {
+                    const c = clickCountRef.current[file.path] ?? { count: 0, timer: null };
+                    c.count++;
+                    if (c.timer) clearTimeout(c.timer);
+                    if (c.count >= 3) {
+                      c.count = 0;
+                      onAttach?.(`${cwd}/${file.path}`);
+                    } else {
+                      onFileClick(file, section, e);
+                      c.timer = setTimeout(() => { c.count = 0; }, 400);
+                    }
+                    clickCountRef.current[file.path] = c;
+                  }}
                 >
                   <FileIcon name={name} />
                   <span className="sc-filename">{name}</span>
@@ -177,7 +193,7 @@ function Section({
   );
 }
 
-export function SourceControl({ cwd, gitStatus, onRefresh, onOpenDiff }: SourceControlProps) {
+export function SourceControl({ cwd, gitStatus, onRefresh, onOpenDiff, onAttach }: SourceControlProps) {
   const [selectedStaged, setSelectedStaged] = useState<Set<string>>(new Set());
   const [selectedUnstaged, setSelectedUnstaged] = useState<Set<string>>(new Set());
   const [commitMsg, setCommitMsg] = useState('');
@@ -186,6 +202,14 @@ export function SourceControl({ cwd, gitStatus, onRefresh, onOpenDiff }: SourceC
   const [discardModal, setDiscardModal] = useState<{ paths: string[] } | null>(null);
   const lastClickedStaged = useRef<string | null>(null);
   const lastClickedUnstaged = useRef<string | null>(null);
+
+  // New state for commit loading, unpushed commits, and push
+  const [commitLoading, setCommitLoading] = useState(false);
+  const [unpushedCommits, setUnpushedCommits] = useState<Array<{hash: string; message: string}>>([]);
+  const [unpushedLoaded, setUnpushedLoaded] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
+  const [pushError, setPushError] = useState('');
+  const [unpushedKey, setUnpushedKey] = useState(0);
 
   // Clear selection when git status changes (after actions)
   useEffect(() => {
@@ -289,7 +313,7 @@ export function SourceControl({ cwd, gitStatus, onRefresh, onOpenDiff }: SourceC
 
   const handleCommit = async () => {
     if (!commitMsg.trim() || !gitStatus.staged.length) return;
-    setActionLoading(true);
+    setCommitLoading(true);
     setCommitError('');
     try {
       const res = await fetch('/api/git-commit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cwd, message: commitMsg }) });
@@ -301,14 +325,121 @@ export function SourceControl({ cwd, gitStatus, onRefresh, onOpenDiff }: SourceC
         setCommitError(data.error ?? 'Commit failed');
       }
     } finally {
-      setActionLoading(false);
+      setCommitLoading(false);
+    }
+  };
+
+  const handleStageAllAndCommit = async () => {
+    if (!commitMsg.trim() || !gitStatus.unstaged.length) return;
+    setCommitLoading(true);
+    setCommitError('');
+    const paths = gitStatus.unstaged.map(f => f.path);
+    let staged = false;
+    try {
+      const stageRes = await fetch('/api/git-stage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cwd, paths }) });
+      const stageData = await stageRes.json() as { ok: boolean; error?: string };
+      if (!stageData.ok) { setCommitError(stageData.error ?? 'Stage failed'); return; }
+      staged = true;
+      const commitRes = await fetch('/api/git-commit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cwd, message: commitMsg }) });
+      const commitData = await commitRes.json() as { ok: boolean; error?: string };
+      if (commitData.ok) {
+        setCommitMsg('');
+      } else {
+        // Revert: unstage the files we just staged
+        await fetch('/api/git-unstage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cwd, paths }) }).catch(() => {});
+        staged = false;
+        setCommitError(commitData.error ?? 'Commit failed');
+      }
+    } catch (err) {
+      if (staged) {
+        await fetch('/api/git-unstage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cwd, paths }) }).catch(() => {});
+      }
+      setCommitError(String(err));
+    } finally {
+      setCommitLoading(false);
+      onRefresh();
+    }
+  };
+
+  const handlePush = async () => {
+    setPushLoading(true);
+    setPushError('');
+    try {
+      const res = await fetch('/api/git-push', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cwd }) });
+      const data = await res.json() as { ok: boolean; error?: string };
+      if (data.ok) {
+        setUnpushedKey(k => k + 1);
+      } else {
+        setPushError(data.error ?? 'Push failed');
+      }
+    } finally {
+      setPushLoading(false);
     }
   };
 
   const isEmpty = gitStatus.staged.length === 0 && gitStatus.unstaged.length === 0;
 
+  useEffect(() => {
+    if (!isEmpty) {
+      setUnpushedLoaded(false);
+      setUnpushedCommits([]);
+      setPushError('');
+      return;
+    }
+    setUnpushedLoaded(false);
+    fetch(`/api/git-unpushed?cwd=${encodeURIComponent(cwd)}`)
+      .then(r => r.json())
+      .then((data: { commits: Array<{hash: string; message: string}>; error?: string }) => {
+        setUnpushedCommits(data.commits ?? []);
+        setUnpushedLoaded(true);
+      })
+      .catch(() => {
+        setUnpushedCommits([]);
+        setUnpushedLoaded(true);
+      });
+  }, [isEmpty, cwd, unpushedKey]);
+
   if (isEmpty) {
-    return <p className="ft-empty">Working tree clean</p>;
+    return (
+      <div className="sc-panel">
+        {!unpushedLoaded ? (
+          <div className="sc-upush-loading">
+            <div className="sc-spinner--lg" />
+          </div>
+        ) : unpushedCommits.length === 0 ? (
+          <p className="ft-empty">All up to date</p>
+        ) : (
+          <div className="sc-unpushed">
+            <div className="sc-upush-header">
+              <span className="sc-upush-title">Outgoing</span>
+              <span className="sc-section-count">{unpushedCommits.length}</span>
+            </div>
+            {pushError && <div className="sc-commit-error" style={{ margin: '0 8px 4px' }}>{pushError}</div>}
+            <ul className="sc-file-list sc-upush-list">
+              {unpushedCommits.map(c => (
+                <li key={c.hash} className="sc-upush-commit">
+                  <span className="sc-upush-hash">{c.hash}</span>
+                  <span className="sc-upush-msg">{c.message}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="sc-commit-area">
+              <button
+                className="sc-btn sc-btn--commit sc-btn--push"
+                disabled={pushLoading}
+                onClick={handlePush}
+              >
+                {pushLoading ? (
+                  <><div className="sc-spinner" />Pushing…</>
+                ) : (
+                  `↑ Push ${unpushedCommits.length} commit${unpushedCommits.length !== 1 ? 's' : ''}`
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (
@@ -328,7 +459,7 @@ export function SourceControl({ cwd, gitStatus, onRefresh, onOpenDiff }: SourceC
       <div className="sc-commit-area">
         <textarea
           className="sc-commit-input"
-          placeholder={gitStatus.staged.length > 0 ? 'Commit message…' : 'Stage changes to commit…'}
+          placeholder="Commit message…"
           value={commitMsg}
           onChange={e => setCommitMsg(e.target.value)}
           onKeyDown={e => {
@@ -338,18 +469,47 @@ export function SourceControl({ cwd, gitStatus, onRefresh, onOpenDiff }: SourceC
             }
           }}
           rows={3}
-          disabled={gitStatus.staged.length === 0}
+          disabled={gitStatus.staged.length === 0 && gitStatus.unstaged.length === 0}
         />
         {commitError && <div className="sc-commit-error">{commitError}</div>}
-        <button
-          className="sc-btn sc-btn--commit"
-          disabled={!commitMsg.trim() || actionLoading || gitStatus.staged.length === 0}
-          onClick={handleCommit}
-        >
-          {gitStatus.staged.length > 0
-            ? `Commit ${gitStatus.staged.length} file${gitStatus.staged.length !== 1 ? 's' : ''}`
-            : 'No staged changes'}
-        </button>
+        <div className="sc-commit-buttons">
+          {/* Stage All — always visible when there are unstaged changes */}
+          {gitStatus.unstaged.length > 0 && (
+            <button
+              className="sc-btn sc-btn--ghost sc-btn--stage-all"
+              disabled={actionLoading || commitLoading}
+              onClick={stageAll}
+              title="Stage all changes"
+            >
+              Stage All ({gitStatus.unstaged.length})
+            </button>
+          )}
+          {/* Commit — when staged changes exist */}
+          {gitStatus.staged.length > 0 && (
+            <button
+              className="sc-btn sc-btn--commit"
+              disabled={!commitMsg.trim() || commitLoading || actionLoading}
+              onClick={handleCommit}
+            >
+              {commitLoading ? (
+                <><div className="sc-spinner" />Committing…</>
+              ) : (
+                `Commit (${gitStatus.staged.length})`
+              )}
+            </button>
+          )}
+          {/* Stage & Commit — only when there are unstaged changes but nothing staged yet */}
+          {gitStatus.unstaged.length > 0 && gitStatus.staged.length === 0 && (
+            <button
+              className="sc-btn sc-btn--commit sc-btn--commit-all"
+              disabled={!commitMsg.trim() || commitLoading || actionLoading}
+              onClick={handleStageAllAndCommit}
+              title="Stage all and commit"
+            >
+              {commitLoading ? <><div className="sc-spinner" />Committing…</> : `Stage & Commit (${gitStatus.unstaged.length})`}
+            </button>
+          )}
+        </div>
       </div>
 
       <Section
@@ -358,10 +518,12 @@ export function SourceControl({ cwd, gitStatus, onRefresh, onOpenDiff }: SourceC
         files={gitStatus.staged}
         selected={selectedStaged}
         section="staged"
+        cwd={cwd}
         onFileClick={handleFileClick}
+        onAttach={onAttach}
         onUnstageAll={unstageAll}
         onUnstageSelected={unstageSelected}
-        actionLoading={actionLoading}
+        actionLoading={actionLoading || commitLoading}
       />
 
       <Section
@@ -370,11 +532,13 @@ export function SourceControl({ cwd, gitStatus, onRefresh, onOpenDiff }: SourceC
         files={gitStatus.unstaged}
         selected={selectedUnstaged}
         section="unstaged"
+        cwd={cwd}
         onFileClick={handleFileClick}
+        onAttach={onAttach}
         onStageAll={stageAll}
         onStageSelected={stageSelected}
         onDiscardSelected={discardSelected}
-        actionLoading={actionLoading}
+        actionLoading={actionLoading || commitLoading}
       />
     </div>
   );

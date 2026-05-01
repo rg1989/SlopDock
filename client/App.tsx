@@ -13,6 +13,13 @@ import { GsdRoadmap } from './components/GsdRoadmap';
 import { BrainPanel } from './components/BrainPanel';
 import { SessionTabBar } from './components/SessionTabBar';
 import { SessionPane } from './components/SessionPane';
+import { SessionHistoryModal } from './components/SessionHistoryModal';
+import { EditorTabBar } from './components/EditorTabBar';
+import type { EditorTab } from './components/EditorTabBar';
+import { FilePreview } from './components/FilePreview';
+import type { FilePreviewData } from './components/FilePreview';
+import { BrainEntryView } from './components/BrainEntryView';
+import type { BrainEntryData } from './components/BrainEntryView';
 import { SuperToolsModal } from './components/SuperToolsModal';
 import type { SuperTool } from './components/SuperToolsModal';
 import './App.css';
@@ -52,7 +59,7 @@ const SIDEBAR_TABS: { id: SidebarTabId; label: string; Icon: () => JSX.Element }
 
 // ── Layout constants ──────────────────────────────────────────────────────────
 const STORAGE_KEY = 'slopdock_last_folder';
-const SIDEBAR_MIN = 140;
+const SIDEBAR_MIN = 180;
 const SIDEBAR_DEFAULT = 240;
 const RESIZE_HANDLE_WIDTH = 4;
 
@@ -81,6 +88,12 @@ interface ActiveSessionActions {
   activeFilePath: string | null | undefined;
   activeTabId: string | null;
   attachments: string[];
+  tabs: EditorTab[];
+  editingTabId: string | null;
+  setActiveTabId: (id: string | null) => void;
+  closeTab: (id: string) => void;
+  promoteTab: (id: string) => void;
+  updateTabData: (id: string, data: FilePreviewData) => void;
 }
 
 // ── App ───────────────────────────────────────────────────────────────────────
@@ -104,12 +117,19 @@ export default function App() {
   const [activeFilePath, setActiveFilePath] = useState<string | undefined>(undefined);
   const [activeAttachments, setActiveAttachments] = useState<string[]>([]);
   const [activeBrainTabId, setActiveBrainTabId] = useState<string | null>(null);
+  // Editor panel state (hoisted from SessionPane)
+  const [activeTabs, setActiveTabs] = useState<EditorTab[]>([]);
+  const [activeEditorTabId, setActiveEditorTabId] = useState<string | null>(null);
+  const [activeEditingTabId, setActiveEditingTabId] = useState<string | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const { settings, update: updateSettings } = useSettings();
 
-  // Drag-resize — sidebar only (app-scoped because layout is global)
+  // Drag-resize — sidebar (left) and editor panel (right)
   const sidebarMaxRef = useRef<number>(Infinity);
   const sidebar = useDragResize(SIDEBAR_DEFAULT, SIDEBAR_MIN, 'left', sidebarMaxRef);
+  const editorMaxRef = useRef<number>(Infinity);
+  const editor = useDragResize(320, 180, 'right', editorMaxRef);
 
   // ── Session manager ──────────────────────────────────────────────────────────
   const sessionManager = useSessionManager();
@@ -129,22 +149,27 @@ export default function App() {
 
   // ── Layout max-width refs (updated every render) ─────────────────────────────
   sidebarMaxRef.current = window.innerWidth - 300 - RESIZE_HANDLE_WIDTH;
+  editorMaxRef.current = window.innerWidth - (cwd ? sidebar.width + RESIZE_HANDLE_WIDTH : 0) - 300;
+
+  // Guard against React StrictMode double-invoking the initial spawn effect
+  const initialSpawnedRef = useRef(false);
 
   // ── Folder connect ───────────────────────────────────────────────────────────
   const handleConnect = useCallback((path: string) => {
     const normalized = path.replace(/\/+$/, '');
     persistPath(normalized);
     setCwd(normalized);
-    sessionManager.spawn(normalized);
+    sessionManager.spawn(normalized, { initial: true });
   }, [sessionManager]);
 
   // Auto-connect from saved path on first load
   useEffect(() => {
-    if (initialPath) {
+    if (initialPath && !initialSpawnedRef.current) {
+      initialSpawnedRef.current = true;
       const normalized = initialPath.replace(/\/+$/, '');
       persistPath(normalized);
       setCwd(normalized);
-      sessionManager.spawn(normalized);
+      sessionManager.spawn(normalized, { initial: true });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -230,6 +255,15 @@ export default function App() {
         />
       )}
 
+      {historyOpen && (
+        <SessionHistoryModal
+          cwd={cwd ?? ''}
+          history={sessionManager.history}
+          onOpen={(entry) => sessionManager.spawn(entry.cwd)}
+          onClose={() => setHistoryOpen(false)}
+        />
+      )}
+
       <div className="app-body">
         {cwd && (
           <>
@@ -293,6 +327,7 @@ export default function App() {
                     gitStatus={gitStatus}
                     onRefresh={loadChanges}
                     onOpenDiff={handleSidebarDiff}
+                    onAttach={handleSidebarAttach}
                   />
                 ) : sidebarTab === 'roadmap' ? (
                   <GsdRoadmap cwd={cwd} onOpenFile={handleSidebarOpen} activeFilePath={activeFilePath} />
@@ -300,6 +335,7 @@ export default function App() {
                   <BrainPanel
                     cwd={cwd}
                     onOpenEntry={handleSidebarBrainEntry}
+                    onAttach={handleSidebarAttach}
                     refreshKey={brainRefreshKey}
                     activeEntryId={activeBrainTabId?.startsWith('brain:') ? activeBrainTabId.slice(6) : undefined}
                   />
@@ -322,9 +358,15 @@ export default function App() {
             <SessionTabBar
               sessions={sessionManager.sessions}
               activeId={sessionManager.activeId}
+              canSpawn={
+                sessionManager.sessions.length > 1
+                  ? !sessionManager.sessions.some(s => s.name === 'New')
+                  : sessionManager.hasPrompted
+              }
               onSetActive={sessionManager.setActive}
               onClose={sessionManager.close}
               onSpawn={() => { if (cwd) sessionManager.spawn(cwd); }}
+              onOpenHistory={() => setHistoryOpen(true)}
             />
             {sessionManager.sessions.map(s => (
               <SessionPane
@@ -346,6 +388,9 @@ export default function App() {
                     setActiveFilePath(actions.activeFilePath ?? undefined);
                     setActiveAttachments(actions.attachments);
                     setActiveBrainTabId(actions.activeTabId);
+                    setActiveTabs(actions.tabs);
+                    setActiveEditorTabId(actions.activeTabId);
+                    setActiveEditingTabId(actions.editingTabId);
                   }
                 }}
               />
@@ -369,6 +414,49 @@ export default function App() {
             />
           </div>
         </div>
+
+        {/* Editor panel — right column, full height, shown when tabs are open */}
+        {activeTabs.length > 0 && (
+          <>
+            <div
+              className={`resize-handle${editor.isDragging ? ' dragging' : ''}`}
+              onMouseDown={editor.onMouseDown}
+            />
+            <div className="editor-panel" style={{ width: editor.width }}>
+              <EditorTabBar
+                tabs={activeTabs}
+                activeId={activeEditorTabId}
+                onSelect={(id) => activeActionsRef.current?.setActiveTabId(id)}
+                onClose={(id) => activeActionsRef.current?.closeTab(id)}
+                onPromote={(id) => activeActionsRef.current?.promoteTab(id)}
+              />
+              {(() => {
+                const tab = activeTabs.find((t) => t.id === activeEditorTabId);
+                if (!tab) return null;
+                if (tab.tabType === 'brain' && tab.data?.type === 'brain') {
+                  return (
+                    <BrainEntryView
+                      data={tab.data as BrainEntryData}
+                      cwd={cwd!}
+                      onClose={() => activeActionsRef.current?.closeTab(tab.id)}
+                      onDeleted={() => setBrainRefreshKey(k => k + 1)}
+                      onUpdated={(updated) => activeActionsRef.current?.updateTabData(tab.id, updated)}
+                    />
+                  );
+                }
+                return (
+                  <FilePreview
+                    data={tab.data}
+                    filePath={tab.path}
+                    cwd={cwd!}
+                    initialEditing={activeEditorTabId === activeEditingTabId}
+                    onPromote={() => activeActionsRef.current?.promoteTab(activeEditorTabId!)}
+                  />
+                );
+              })()}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

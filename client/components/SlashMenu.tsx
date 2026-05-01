@@ -32,23 +32,31 @@ interface SlashMenuProps {
   selectedIndex: number;
   onSelect: (cmd: SlashCommand) => void;
   onClose: () => void;
+  anchorRect: DOMRect;
 }
 
-export default function SlashMenu({ items, selectedIndex, onSelect }: SlashMenuProps) {
+const MAX_MENU_HEIGHT = 240;
+
+export default function SlashMenu({ items, selectedIndex, onSelect, anchorRect }: SlashMenuProps) {
   if (items.length === 0) return null;
+
+  // Render above the textarea using fixed positioning so no overflow:hidden clips it
+  const bottom = window.innerHeight - anchorRect.top + 4;
+  const left = anchorRect.left;
+  const width = anchorRect.width;
 
   return (
     <div
       style={{
-        position: 'absolute',
-        bottom: 'calc(100% + 4px)',
-        left: 0,
-        right: 0,
-        zIndex: 100,
+        position: 'fixed',
+        bottom,
+        left,
+        width,
+        zIndex: 9999,
         background: '#161b22',
         border: '1px solid #30363d',
         borderRadius: '6px',
-        maxHeight: '240px',
+        maxHeight: `${MAX_MENU_HEIGHT}px`,
         overflowY: 'auto',
         boxShadow: '0 -4px 16px rgba(0,0,0,0.4)',
       }}
@@ -91,6 +99,7 @@ export default function SlashMenu({ items, selectedIndex, onSelect }: SlashMenuP
           <span
             style={{
               color: '#8b949e',
+              fontFamily: 'monospace',
               fontSize: '12px',
               overflow: 'hidden',
               textOverflow: 'ellipsis',

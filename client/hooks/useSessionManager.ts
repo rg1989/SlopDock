@@ -21,7 +21,8 @@ export interface PersistedSession {
 export interface UseSessionManagerReturn {
   sessions: SessionEntry[];
   activeId: string | null;
-  spawn: (cwd: string) => string;
+  hasPrompted: boolean;
+  spawn: (cwd: string, opts?: { initial?: boolean }) => string;
   close: (id: string) => void;
   setActive: (id: string) => void;
   updateName: (id: string, name: string) => void;
@@ -51,9 +52,9 @@ export function useSessionManager(): UseSessionManagerReturn {
   const [sessions, setSessions] = useState<SessionEntry[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [history, setHistory] = useState<PersistedSession[]>([]);
+  // True once any session has received its first user prompt
+  const [hasPrompted, setHasPrompted] = useState(false);
 
-  // Track session counter for default naming
-  const sessionCounterRef = useRef(0);
   // Track which sessions have had their name set via updateName (idempotent after first call)
   const namedSessionsRef = useRef<Set<string>>(new Set());
   // Keep a ref to sessions for use inside callbacks without stale closure issues
@@ -79,23 +80,25 @@ export function useSessionManager(): UseSessionManagerReturn {
     setHistory(allHistory);
   }, []);
 
-  const spawn = useCallback((cwd: string): string => {
+  const spawn = useCallback((cwd: string, { initial = false }: { initial?: boolean } = {}): string => {
     const current = sessionsRef.current;
     if (current.length >= MAX_SESSIONS) {
-      // Soft cap — return existing active id
       return activeIdRef.current ?? current[current.length - 1]?.id ?? '';
     }
 
+    // If spawning an additional session, focus existing "New" tab instead of creating another
+    if (!initial) {
+      const unnamedTab = current.find(s => s.name === 'New');
+      if (unnamedTab) {
+        setActiveId(unnamedTab.id);
+        return unnamedTab.id;
+      }
+    }
+
     const id = crypto.randomUUID();
-    sessionCounterRef.current += 1;
-    const name = `Session ${sessionCounterRef.current}`;
-    const newEntry: SessionEntry = {
-      id,
-      name,
-      status: 'connecting',
-      cwd,
-      createdAt: Date.now(),
-    };
+    // Initial session has no name (tab bar hidden while solo); additional sessions start as "New"
+    const name = initial ? '' : 'New';
+    const newEntry: SessionEntry = { id, name, status: 'connecting', cwd, createdAt: Date.now() };
 
     setSessions(prev => [...prev, newEntry]);
     setActiveId(id);
@@ -107,7 +110,6 @@ export function useSessionManager(): UseSessionManagerReturn {
     const session = current.find(s => s.id === id);
     if (!session) return;
 
-    // Persist to history
     const persistedStatus: 'done' | 'error' = session.status === 'error' ? 'error' : 'done';
     const persistedEntry: PersistedSession = {
       id: session.id,
@@ -119,11 +121,9 @@ export function useSessionManager(): UseSessionManagerReturn {
     saveToHistory(session.cwd, persistedEntry);
     setHistory(h => [persistedEntry, ...h].slice(0, MAX_HISTORY));
 
-    // Remove from sessions array
     const remaining = current.filter(s => s.id !== id);
     setSessions(remaining);
 
-    // Update active id if needed
     if (activeIdRef.current === id) {
       setActiveId(remaining.length > 0 ? remaining[remaining.length - 1].id : null);
     }
@@ -134,9 +134,10 @@ export function useSessionManager(): UseSessionManagerReturn {
   }, []);
 
   const updateName = useCallback((id: string, name: string) => {
-    if (namedSessionsRef.current.has(id)) return; // Idempotent — only first call counts
+    if (namedSessionsRef.current.has(id)) return;
     namedSessionsRef.current.add(id);
     setSessions(prev => prev.map(s => s.id === id ? { ...s, name } : s));
+    setHasPrompted(true);
   }, []);
 
   const updateStatus = useCallback((id: string, status: SessionStatus) => {
@@ -146,6 +147,7 @@ export function useSessionManager(): UseSessionManagerReturn {
   return {
     sessions,
     activeId,
+    hasPrompted,
     spawn,
     close,
     setActive,

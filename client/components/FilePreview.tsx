@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { MarkdownRenderer } from './MarkdownRenderer';
 
 export type FilePreviewData =
   | { type: 'text'; content: string }
   | { type: 'binary'; isImage: true; base64: string; ext: string }
   | { type: 'binary'; isImage: false; ext: string }
   | { type: 'diff'; content: string }
+  | { type: 'brain'; id: string; name: string; description: string; entryType: string; tags: string[]; created: string; body: string }
   | { type: 'not-found' };
 
 interface FilePreviewProps {
@@ -122,12 +124,16 @@ export function FilePreview({ data, filePath, cwd, initialEditing, onPromote }: 
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
   const [highlightedHtml, setHighlightedHtml] = useState<string | null>(null);
+  const [mdPreview, setMdPreview] = useState(false);
+
+  const isMarkdown = filePath?.match(/\.(md|markdown)$/i) != null;
 
   // Reset on file change; enter edit mode if initialEditing is set
   useEffect(() => {
     setEditing(!!initialEditing);
     setDraft(initialEditing && data?.type === 'text' ? data.content : '');
     setHighlightedHtml(null);
+    setMdPreview(false);
   }, [data, initialEditing]);
 
   // Highlight code via server-side Shiki
@@ -217,11 +223,26 @@ export function FilePreview({ data, filePath, cwd, initialEditing, onPromote }: 
               <button className="fp-btn" onClick={handleCancel} disabled={saving}>Cancel</button>
             </>
           ) : (
-            <button className="fp-btn" onClick={handleEdit}>Edit</button>
+            <>
+              <button className="fp-btn" onClick={handleEdit}>Edit</button>
+              {isMarkdown && (
+                <button
+                  className={`fp-btn${mdPreview ? ' primary' : ''}`}
+                  onClick={() => setMdPreview(v => !v)}
+                  title="Toggle rendered preview"
+                >
+                  Preview
+                </button>
+              )}
+            </>
           )}
         </div>
         {editing ? (
           <textarea className="fp-edit-area" value={draft} onChange={(e) => setDraft(e.target.value)} />
+        ) : mdPreview && isMarkdown ? (
+          <div className="fp-md-preview">
+            <MarkdownRenderer content={content} />
+          </div>
         ) : highlightedHtml ? (
           <div className="fp-shiki" dangerouslySetInnerHTML={{ __html: highlightedHtml }} />
         ) : (
@@ -234,6 +255,9 @@ export function FilePreview({ data, filePath, cwd, initialEditing, onPromote }: 
   if (data.type === 'diff') {
     return <DiffView content={data.content} />;
   }
+
+  // brain entries are rendered by BrainEntryView in App.tsx — FilePreview never receives them
+  if (data.type === 'brain') return null;
 
   if (data.isImage) {
     const mime = getMimeType(data.ext);

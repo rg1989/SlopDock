@@ -1,4 +1,4 @@
-# Roadmap: ClaudeTalk
+# Roadmap: SlopDock
 
 ## Overview
 
