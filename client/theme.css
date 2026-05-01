@@ -1,0 +1,48 @@
+/* ── SlopDock Design Tokens ──────────────────────────────────────────────────
+   Single source of truth for all colours and fonts.
+   To retheme: edit values here only. Never hardcode palette hex in App.css.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Backgrounds */
+  --bg:           #0d1117;
+  --surface:      #161b22;
+  --surface-hover:#1c2128;
+  --surface-hi:   #21262d;
+
+  /* Borders */
+  --border:       #30363d;
+  --border-muted: #484f58;
+
+  /* Text */
+  --txt-dim:      #6e7681;
+  --txt-sub:      #8b949e;
+  --txt:          #c9d1d9;
+  --txt-bright:   #e6edf3;
+
+  /* Accent (orange) — use --accent-rgb for rgba() calls */
+  --accent:       #d4845a;
+  --accent-hover: #e89a70;
+  --accent-dim:   #c57348;
+  --accent-rgb:   212, 132, 90;
+
+  /* Semantic */
+  --error:      #f85149;
+  --error-rgb:  248, 81, 73;
+  --success:    #7ee787;
+  --warning:    #e3b341;
+  --info:       #79c0ff;
+
+  /* Syntax highlight (code/token contexts only) */
+  --syn-red:    #ff7b72;
+  --syn-blue:   #a5d6ff;
+  --syn-purple: #d2a8ff;
+  --syn-violet: #bc8cff;
+  --syn-link:   #58a6ff;
+  --syn-green:  #aff3b7;
+
+  /* Fonts */
+  --font-ui:       monospace;
+  --font-terminal: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+  --font-prose:    Georgia, serif;
+}

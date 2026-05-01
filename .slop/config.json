@@ -1,0 +1,10 @@
+{
+  "version": "1",
+  "created": "2026-05-01T19:55:18.222Z",
+  "projectName": "SlopDock",
+  "agent": {
+    "command": "claude",
+    "args": [],
+    "label": "Claude"
+  }
+}
