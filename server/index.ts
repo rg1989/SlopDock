@@ -5,7 +5,7 @@ import os from 'os';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { fileURLToPath } from 'url';
-import { readFile, writeFile, access as fsAccess, readdir, rm, mkdir } from 'fs/promises';
+import { readFile, writeFile, access as fsAccess, readdir, rm, mkdir, rename, stat } from 'fs/promises';
 import { isBinaryFile } from 'isbinaryfile';
 import { createHighlighter, type Highlighter } from 'shiki';
 import { attachWebSocketServer } from './ws-handler.js';
@@ -54,6 +54,49 @@ if (process.env.NODE_ENV === 'production') {
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+const SLOP_DIR = path.join(os.homedir(), '.slop');
+const SETTINGS_FILE = path.join(SLOP_DIR, 'settings.json');
+const RECENTS_FILE = path.join(SLOP_DIR, 'recents.json');
+const BACKUP_ROOT = path.join(SLOP_DIR, 'backups');
+
+const VAULT_TARGETS = [
+  { id: 'claude-settings',       src: path.join(os.homedir(), '.claude/settings.json'),             dest: path.join(BACKUP_ROOT, 'claude/settings.json') },
+  { id: 'claude-settings-local', src: path.join(os.homedir(), '.claude/settings.local.json'),       dest: path.join(BACKUP_ROOT, 'claude/settings.local.json') },
+  { id: 'claude-md',             src: path.join(os.homedir(), '.claude/CLAUDE.md'),                 dest: path.join(BACKUP_ROOT, 'claude/CLAUDE.md') },
+  { id: 'claude-keybindings',    src: path.join(os.homedir(), '.claude/keybindings.json'),          dest: path.join(BACKUP_ROOT, 'claude/keybindings.json') },
+  { id: 'gsd-config',            src: path.join(os.homedir(), '.claude/get-shit-done/config.json'), dest: path.join(BACKUP_ROOT, 'gsd/config.json') },
+  { id: 'git-config',            src: path.join(os.homedir(), '.gitconfig'),                        dest: path.join(BACKUP_ROOT, 'git/.gitconfig') },
+  { id: 'ssh-config',            src: path.join(os.homedir(), '.ssh/config'),                       dest: path.join(BACKUP_ROOT, 'ssh/config') },
+] as const;
+
+async function atomicWrite(filePath: string, content: string): Promise<void> {
+  const tmp = filePath + '.tmp';
+  await writeFile(tmp, content, 'utf-8');
+  await rename(tmp, filePath);
+}
+
+async function isSourceNewer(src: string, dest: string): Promise<boolean> {
+  try {
+    const [srcStat, destStat] = await Promise.all([stat(src), stat(dest)]);
+    return srcStat.mtimeMs > destStat.mtimeMs;
+  } catch {
+    try { await stat(src); return true; } catch { return false; }
+  }
+}
+
+async function autoBackupVault(): Promise<void> {
+  await mkdir(BACKUP_ROOT, { recursive: true });
+  for (const t of VAULT_TARGETS) {
+    try {
+      const newer = await isSourceNewer(t.src, t.dest);
+      if (!newer) continue;
+      await mkdir(path.dirname(t.dest), { recursive: true });
+      const content = await readFile(t.src, 'utf-8');
+      await atomicWrite(t.dest, content);
+    } catch { /* per-target failure is acceptable */ }
+  }
+}
 
 // Known AI agent CLIs — checked against PATH to power the settings combobox
 const KNOWN_AGENTS = ['claude', 'opencode', 'aider', 'gemini', 'codex', 'hermes', 'goose'];
@@ -907,6 +950,75 @@ app.get('/api/rules', async (req, res) => {
   res.json({ files });
 });
 
+app.get('/api/slop-status', async (req, res) => {
+  const { cwd } = req.query as { cwd?: string };
+  if (!cwd) { res.status(400).json({ error: 'cwd required' }); return; }
+  const slopDir = path.join(path.resolve(cwd), '.slop');
+  const configFile = path.join(slopDir, 'config.json');
+  try {
+    await fsAccess(slopDir);
+    try {
+      const raw = await readFile(configFile, 'utf-8');
+      res.json({ exists: true, config: JSON.parse(raw) });
+    } catch {
+      res.json({ exists: true, config: null });
+    }
+  } catch {
+    res.json({ exists: false, config: null });
+  }
+});
+
+app.post('/api/slop-init', async (req, res) => {
+  const { cwd, projectName } = req.body as { cwd?: string; projectName?: string };
+  if (!cwd) { res.status(400).json({ error: 'cwd required' }); return; }
+  const slopDir = path.join(path.resolve(cwd), '.slop');
+  const configFile = path.join(slopDir, 'config.json');
+  await mkdir(slopDir, { recursive: true });
+  const config = {
+    version: '1',
+    created: new Date().toISOString(),
+    projectName: projectName ?? path.basename(path.resolve(cwd)),
+    agent: { command: 'claude', args: [], label: 'Claude' },
+  };
+  await atomicWrite(configFile, JSON.stringify(config, null, 2));
+  res.json({ ok: true, config });
+});
+
+app.get('/api/global-settings', async (_req, res) => {
+  try {
+    const raw = await readFile(SETTINGS_FILE, 'utf-8');
+    res.json({ settings: JSON.parse(raw) });
+  } catch {
+    res.json({ settings: null });
+  }
+});
+
+app.put('/api/global-settings', async (req, res) => {
+  const { settings } = req.body as { settings?: unknown };
+  if (!settings) { res.status(400).json({ error: 'settings required' }); return; }
+  await mkdir(SLOP_DIR, { recursive: true });
+  await atomicWrite(SETTINGS_FILE, JSON.stringify(settings, null, 2));
+  res.json({ ok: true });
+});
+
+app.get('/api/recent-paths', async (_req, res) => {
+  try {
+    const raw = await readFile(RECENTS_FILE, 'utf-8');
+    const { paths } = JSON.parse(raw) as { paths: string[] };
+    res.json({ paths: paths ?? [] });
+  } catch {
+    res.json({ paths: [] });
+  }
+});
+
+app.put('/api/recent-paths', async (req, res) => {
+  const { paths } = req.body as { paths?: string[] };
+  if (!Array.isArray(paths)) { res.status(400).json({ error: 'paths array required' }); return; }
+  await mkdir(SLOP_DIR, { recursive: true });
+  await atomicWrite(RECENTS_FILE, JSON.stringify({ version: '1', paths }, null, 2));
+  res.json({ ok: true });
+});
+
 // Attach WebSocket server
 attachWebSocketServer(server);
 
@@ -916,4 +1028,5 @@ server.listen(PORT, () => {
   // Start Piper TTS and probe Whisper STT in background — non-blocking
   initPiper().catch(() => {});
   checkWhisper().catch(() => {});
+  autoBackupVault().catch(() => {});
 });
