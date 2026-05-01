@@ -28,9 +28,11 @@ export interface UseSessionManagerReturn {
   updateName: (id: string, name: string) => void;
   updateStatus: (id: string, status: SessionStatus) => void;
   history: PersistedSession[];
+  restoreForCwd: (cwd: string) => void;
 }
 
 const HISTORY_KEY = (cwd: string) => `slopdock_sessions_${cwd}`;
+const ACTIVE_KEY = (cwd: string) => `slopdock_active:${encodeURIComponent(cwd)}`;
 const MAX_HISTORY = 20;
 const MAX_SESSIONS = 8;
 
@@ -48,22 +50,46 @@ function saveToHistory(cwd: string, entry: PersistedSession) {
   } catch {}
 }
 
+function loadActiveSessions(cwd: string): { sessions: SessionEntry[]; activeId: string | null } {
+  try {
+    const raw = localStorage.getItem(ACTIVE_KEY(cwd));
+    if (!raw) return { sessions: [], activeId: null };
+    return JSON.parse(raw) as { sessions: SessionEntry[]; activeId: string | null };
+  } catch { return { sessions: [], activeId: null }; }
+}
+
+function saveActiveSessions(cwd: string, sessions: SessionEntry[], activeId: string | null) {
+  try {
+    // Only persist sessions that were alive (not already closed/done/error)
+    const toSave = sessions.filter(s => s.status !== 'done' && s.status !== 'error');
+    if (toSave.length === 0) {
+      localStorage.removeItem(ACTIVE_KEY(cwd));
+    } else {
+      localStorage.setItem(ACTIVE_KEY(cwd), JSON.stringify({ sessions: toSave, activeId }));
+    }
+  } catch {}
+}
+
 export function useSessionManager(): UseSessionManagerReturn {
   const [sessions, setSessions] = useState<SessionEntry[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [history, setHistory] = useState<PersistedSession[]>([]);
-  // True once any session has received its first user prompt
   const [hasPrompted, setHasPrompted] = useState(false);
 
-  // Track which sessions have had their name set via updateName (idempotent after first call)
   const namedSessionsRef = useRef<Set<string>>(new Set());
-  // Keep a ref to sessions for use inside callbacks without stale closure issues
   const sessionsRef = useRef<SessionEntry[]>([]);
   const activeIdRef = useRef<string | null>(null);
   const initialSessionIdRef = useRef<string | null>(null);
 
   useEffect(() => { sessionsRef.current = sessions; }, [sessions]);
   useEffect(() => { activeIdRef.current = activeId; }, [activeId]);
+
+  // Persist active sessions whenever they change — derive cwd from first session
+  useEffect(() => {
+    const cwd = sessions[0]?.cwd;
+    if (!cwd) return;
+    saveActiveSessions(cwd, sessions, activeId);
+  }, [sessions, activeId]);
 
   // Load all session history from localStorage on mount
   useEffect(() => {
@@ -79,6 +105,18 @@ export function useSessionManager(): UseSessionManagerReturn {
     } catch {}
     allHistory.sort((a, b) => b.closedAt - a.closedAt);
     setHistory(allHistory);
+  }, []);
+
+  // Restore active sessions for a given cwd — call this before spawn() on initial load
+  const restoreForCwd = useCallback((cwd: string) => {
+    const { sessions: saved, activeId: savedActiveId } = loadActiveSessions(cwd);
+    if (!saved.length) return;
+
+    const reconnecting: SessionEntry[] = saved.map(s => ({ ...s, status: 'connecting' as SessionStatus }));
+    const initialSession = reconnecting.find(s => s.name === '') ?? reconnecting[0];
+    initialSessionIdRef.current = initialSession?.id ?? null;
+    setSessions(reconnecting);
+    setActiveId(savedActiveId ?? initialSession?.id ?? null);
   }, []);
 
   const spawn = useCallback((cwd: string, { initial = false }: { initial?: boolean } = {}): string => {
@@ -99,7 +137,6 @@ export function useSessionManager(): UseSessionManagerReturn {
       }
     }
 
-    // If spawning an additional session, focus existing "New" tab instead of creating another
     if (!initial) {
       const unnamedTab = current.find(s => s.name === 'New');
       if (unnamedTab) {
@@ -109,7 +146,6 @@ export function useSessionManager(): UseSessionManagerReturn {
     }
 
     const id = crypto.randomUUID();
-    // Initial session has no name (tab bar hidden while solo); additional sessions start as "New"
     const name = initial ? '' : 'New';
     const newEntry: SessionEntry = { id, name, status: 'connecting', cwd, createdAt: Date.now() };
 
@@ -168,5 +204,6 @@ export function useSessionManager(): UseSessionManagerReturn {
     updateName,
     updateStatus,
     history,
+    restoreForCwd,
   };
 }

@@ -234,6 +234,7 @@ export default function App() {
     const normalized = path.replace(/\/+$/, '');
     persistPath(normalized);
     setCwd(normalized);
+    sessionManager.restoreForCwd(normalized);
     sessionManager.spawn(normalized, { initial: true });
   }, [sessionManager]);
 
@@ -244,6 +245,7 @@ export default function App() {
       const normalized = initialPath.replace(/\/+$/, '');
       persistPath(normalized);
       setCwd(normalized);
+      sessionManager.restoreForCwd(normalized);
       sessionManager.spawn(normalized, { initial: true });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps

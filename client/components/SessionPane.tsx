@@ -29,6 +29,7 @@ export interface SessionPaneActions {
   closeTab: (id: string) => void;
   promoteTab: (id: string) => void;
   updateTabData: (id: string, data: FilePreviewData) => void;
+  restoreFromSaved: (saved: { tabs: Array<{ path: string; isPreview: boolean }>; activeTabId: string | null }, cwd: string) => void;
 }
 
 interface SessionPaneProps {
@@ -121,6 +122,7 @@ export function SessionPane({
       closeTab: session.closeTab,
       promoteTab: session.promoteTab,
       updateTabData: session.updateTabData,
+      restoreFromSaved: session.restoreFromSaved,
     });
   }); // intentionally no deps — re-register on every render so actions stay fresh
 
