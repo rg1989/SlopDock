@@ -16,6 +16,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: File System** - VSCode-style file explorer sidebar, file attachment with previews, file preview panel (completed 2026-04-30)
 - [x] **Phase 3: Voice I/O** - Voice transcription into the message composer, TTS playback of agent responses, mid-sentence interruption (completed 2026-04-30)
 - [x] **Phase 4: Multi-Session Tabs** - Terminal session tabs with stable UUIDs, live state indicators, name from first prompt, session history, persistence across reload (completed 2026-05-01)
+- [x] **Phase 5: Project Onboarding Wizard and Setup Health Check** - First-time onboarding modal + health check strip for git, CLAUDE.md, agent CLI, node_modules (completed 2026-05-01)
+- [ ] **Phase 6: .slop Config Vault** - Project-local and global config on disk, dotfile backup/restore for Claude, GSD, and second-brain configs
 
 ## Phase Details
 
