@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: "Completed 04-multi-session-tabs/04-01: Wave 0 RED test scaffolds"
-last_updated: "2026-05-01T12:49:20.325Z"
+stopped_at: "Completed 04-multi-session-tabs/04-02: Core data layer — useSessionManager + protocol + usePty callbacks"
+last_updated: "2026-05-01T12:54:49.189Z"
 last_activity: "2026-04-30 - Completed quick task 1: add syntax colors and edit mode to file preview panel"
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 16
-  completed_plans: 13
+  completed_plans: 14
   percent: 100
 ---
 
@@ -61,6 +61,7 @@ Progress: [██████████] 100% (All Phases)
 | Phase 03-voice-io P01 | 3min | 2 tasks | 4 files |
 | Phase 03-voice-io P02 | 8min | 2 tasks | 2 files |
 | Phase 04-multi-session-tabs P01 | 6min | 2 tasks | 3 files |
+| Phase 04-multi-session-tabs P02 | 12min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -106,6 +107,8 @@ Recent decisions affecting current work:
 - [Phase 03-voice-io]: onData gated by ttsEnabled flag (ttsEnabled ? tts.handleData : undefined) — zero processing overhead when TTS is off
 - [Phase 03-voice-io]: VoiceBar as pure presentational component receiving all callbacks as props — no direct hook calls inside component
 - [Phase 04-multi-session-tabs]: Wave 0 RED tests import non-existent modules via @ts-expect-error so Vitest runs RED without TypeScript blocking compilation
+- [Phase 04-multi-session-tabs]: sessionsRef+activeIdRef mirrors state in refs so spawn/close callbacks read current values synchronously without stale closures
+- [Phase 04-multi-session-tabs]: SessionStatus exported from both usePty.ts and useSessionManager.ts to avoid circular imports between the two hooks
 
 ### Roadmap Evolution
 
@@ -128,6 +131,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-01T12:49:20.323Z
-Stopped at: Completed 04-multi-session-tabs/04-01: Wave 0 RED test scaffolds
+Last session: 2026-05-01T12:54:40.963Z
+Stopped at: Completed 04-multi-session-tabs/04-02: Core data layer — useSessionManager + protocol + usePty callbacks
 Resume file: None
