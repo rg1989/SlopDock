@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 export interface PttCombo {
   code: string;    // event.code, e.g. 'Space', 'KeyM'
@@ -70,9 +70,36 @@ function save(s: AppSettings) {
 export function useSettings() {
   const [settings, setSettings] = useState<AppSettings>(load);
 
+  useEffect(() => {
+    let active = true;
+    fetch('/api/global-settings')
+      .then(r => r.json())
+      .then(({ settings: serverSettings }: { settings: AppSettings | null }) => {
+        if (!active) return;
+        if (serverSettings) {
+          setSettings({ ...DEFAULTS, ...serverSettings });
+          localStorage.removeItem(STORAGE_KEY);
+        } else {
+          const current = load();
+          fetch('/api/global-settings', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ settings: current }),
+          }).catch(() => {});
+        }
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
+
   const update = useCallback((patch: Partial<AppSettings>) => {
     setSettings(prev => {
       const next = { ...prev, ...patch };
+      fetch('/api/global-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings: next }),
+      }).catch(() => {});
       save(next);
       return next;
     });
