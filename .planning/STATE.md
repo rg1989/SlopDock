@@ -132,6 +132,7 @@ Recent decisions affecting current work:
 
 - Phase 4 added: Multi-Session Tabs — terminal session tabs with stable UUIDs, live state indicators (working/waiting/error/done), session name from first prompt, session history persisted on close, structured for future full PTY reconnect without client-side changes
 - Phase 5 added: Project Onboarding Wizard and Setup Health Check
+- Phase 6 added: .slop Config Vault — project-local + global config on disk replacing localStorage; dotfile backup/restore system for Claude, GSD, and second-brain configs
 
 ### Pending Todos
 

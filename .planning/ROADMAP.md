@@ -111,3 +111,13 @@ Plans:
 - [ ] 05-02-PLAN.md — OnboardingModal component + App.tsx wiring + health CSS classes
 - [ ] 05-03-PLAN.md — GET /api/project-health endpoint + useProjectHealth hook
 - [ ] 05-04-PLAN.md — HealthStatusBar component + App.tsx health wiring + human verification checkpoint
+
+### Phase 6: .slop Config Vault
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 5
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 6 to break down)
