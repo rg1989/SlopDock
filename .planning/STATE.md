@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: "Completed quick-1: syntax highlighting + edit/save mode in FilePreview"
-last_updated: "2026-04-30T20:55:35.146Z"
-last_activity: "2026-04-30 — Plan 03-04 complete: VoiceBar, useTts+useVoiceInput wiring, all 6 voice requirements verified"
+stopped_at: "Completed 04-multi-session-tabs/04-01: Wave 0 RED test scaffolds"
+last_updated: "2026-05-01T12:49:20.325Z"
+last_activity: "2026-04-30 - Completed quick task 1: add syntax colors and edit mode to file preview panel"
 progress:
-  total_phases: 3
+  total_phases: 4
   completed_phases: 3
-  total_plans: 12
-  completed_plans: 12
+  total_plans: 16
+  completed_plans: 13
   percent: 100
 ---
 
@@ -60,6 +60,7 @@ Progress: [██████████] 100% (All Phases)
 | Phase 03-voice-io P03 | 2min | 1 tasks | 2 files |
 | Phase 03-voice-io P01 | 3min | 2 tasks | 4 files |
 | Phase 03-voice-io P02 | 8min | 2 tasks | 2 files |
+| Phase 04-multi-session-tabs P01 | 6min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -104,6 +105,11 @@ Recent decisions affecting current work:
 - [Phase 03-voice-io]: Mutual exclusion (TTS-04) enforced in App.tsx wiring via onStart callback, not inside hooks — keeps hooks independently testable
 - [Phase 03-voice-io]: onData gated by ttsEnabled flag (ttsEnabled ? tts.handleData : undefined) — zero processing overhead when TTS is off
 - [Phase 03-voice-io]: VoiceBar as pure presentational component receiving all callbacks as props — no direct hook calls inside component
+- [Phase 04-multi-session-tabs]: Wave 0 RED tests import non-existent modules via @ts-expect-error so Vitest runs RED without TypeScript blocking compilation
+
+### Roadmap Evolution
+
+- Phase 4 added: Multi-Session Tabs — terminal session tabs with stable UUIDs, live state indicators (working/waiting/error/done), session name from first prompt, session history persisted on close, structured for future full PTY reconnect without client-side changes
 
 ### Pending Todos
 
@@ -122,6 +128,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-01T00:00:00.000Z
-Stopped at: Completed quick-2: slash-command autocomplete dropdown in Composer
+Last session: 2026-05-01T12:49:20.323Z
+Stopped at: Completed 04-multi-session-tabs/04-01: Wave 0 RED test scaffolds
 Resume file: None

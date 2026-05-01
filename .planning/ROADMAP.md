@@ -83,7 +83,7 @@ Phases execute in numeric order: 1 → 2 → 3
 | 1. PTY Core | 4/4 | Complete    | 2026-04-30 |
 | 2. File System | 4/4 | Complete    | 2026-04-30 |
 | 3. Voice I/O | 4/4 | Complete    | 2026-04-30 |
-| 4. Multi-Session Tabs | 0/4 | Not started | — |
+| 4. Multi-Session Tabs | 1/4 | In Progress|  |
 
 
 ### Phase 4: Multi-Session Tabs
@@ -91,7 +91,7 @@ Phases execute in numeric order: 1 → 2 → 3
 **Goal:** User can spawn multiple terminal sessions within the same workspace, navigate between them via a tab bar, see live status indicators (working/waiting/error/done), and have session names and history persist across reloads — structured for future full PTY reconnect.
 **Depends on:** Phase 3
 **Requirements**: SESS-01, SESS-02, SESS-03, SESS-04, SESS-05, SESS-06
-**Plans:** 4 plans
+**Plans:** 1/4 plans executed
 
 Plans:
 - [ ] 04-01-PLAN.md — Wave 0 TDD scaffolds (useSessionManager tests, SessionTabBar tests, usePty sessionId extension)
