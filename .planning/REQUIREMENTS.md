@@ -33,6 +33,15 @@
 - [x] **TTS-03**: User can interrupt TTS mid-sentence by speaking — playback stops and the transcribed speech is sent as a new message
 - [x] **TTS-04**: TTS and voice input are mutually exclusive — TTS pauses/stops when voice recording starts
 
+### Multi-Session
+
+- [ ] **SESS-01**: User can spawn multiple terminal sessions within the same workspace (soft cap of 8)
+- [ ] **SESS-02**: User can navigate between sessions via a tab bar above the terminal area
+- [ ] **SESS-03**: Each session tab shows a live status indicator (connecting / waiting / working / done / error)
+- [ ] **SESS-04**: Session name is derived from the first prompt the user sends in that session
+- [ ] **SESS-05**: Closed session metadata (name, status, cwd, timestamps) persists to localStorage and survives page reload
+- [ ] **SESS-06**: Protocol and server architecture are structured for future PTY reconnect — stable sessionId carried from the start message
+
 ## v2 Requirements
 
 ### Power Features
@@ -58,8 +67,8 @@
 | Multi-user / auth | Personal tool only — no server-side user management |
 | Electron packaging | Web app is sufficient for v1; can be added later as a 1-day wrapper |
 | Cloud hosting | Local-only by design |
-| Multiple concurrent sessions | Single active Claude CLI session per window for v1 |
 | Real-time collaboration | Out of personal tool scope |
+| PTY reconnect after server restart (v1) | sessionId wire-compatibility is in scope (SESS-06) but live reconnect is deferred to v2 |
 
 ## Traceability
 
@@ -81,12 +90,18 @@
 | TTS-02 | Phase 3 | Complete |
 | TTS-03 | Phase 3 | Complete |
 | TTS-04 | Phase 3 | Complete |
+| SESS-01 | Phase 4 | In Progress |
+| SESS-02 | Phase 4 | In Progress |
+| SESS-03 | Phase 4 | In Progress |
+| SESS-04 | Phase 4 | In Progress |
+| SESS-05 | Phase 4 | In Progress |
+| SESS-06 | Phase 4 | In Progress |
 
 **Coverage:**
-- v1 requirements: 16 total
-- Mapped to phases: 16
+- v1 requirements: 22 total
+- Mapped to phases: 22
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-30*
-*Last updated: 2026-04-30 after roadmap creation*
+*Last updated: 2026-05-01 after Phase 4 planning (SESS-01..SESS-06 added)*
