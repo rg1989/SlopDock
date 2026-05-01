@@ -1,7 +1,7 @@
 {
-  "name": "claudetalk",
+  "name": "slopdock",
   "version": "1.0.0",
-  "description": "Browser-based Claude CLI terminal with full PTY fidelity",
+  "description": "Browser-based Claude CLI terminal with file explorer, voice I/O, and GSD integration",
   "type": "module",
   "scripts": {
     "dev": "concurrently \"npm run server\" \"npm run client\"",
@@ -21,6 +21,7 @@
     "node-pty": "^1.1.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
+    "shiki": "^4.0.2",
     "ws": "^8.17.0"
   },
   "devDependencies": {
