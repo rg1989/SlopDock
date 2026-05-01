@@ -1079,9 +1079,12 @@ html, body, #root { height: 100%; background: var(--bg); color: var(--txt); font
   inset: 0;
   background: rgba(0, 0, 0, 0.6);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
+  padding-top: 10vh;
+  padding-bottom: 4vh;
   z-index: 1000;
+  overflow-y: auto;
 }
 
 .modal-panel {
@@ -1092,6 +1095,7 @@ html, body, #root { height: 100%; background: var(--bg); color: var(--txt); font
   width: 520px;
   min-width: 360px;
   max-width: calc(100vw - 32px);
+  max-height: 85vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2958,15 +2962,6 @@ html, body, #root { height: 100%; background: var(--bg); color: var(--txt); font
 }
 
 /* ── Confirmation modal ─────────────────────────────── */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.65);
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
 
 .confirm-panel {
   padding: 20px 24px;
@@ -3038,7 +3033,7 @@ html, body, #root { height: 100%; background: var(--bg); color: var(--txt); font
 
 .st-modal {
   width: 560px;
-  max-height: 84vh;
+  max-height: 78vh;
 }
 
 .st-modal-title-row {
