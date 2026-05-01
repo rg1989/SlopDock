@@ -3959,3 +3959,13 @@ html, body, #root { height: 100%; background: var(--bg); color: var(--txt); font
   font-size: 11px;
   color: var(--txt-dim);
 }
+
+.vault-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.vault-dot--ok { background: var(--success); }
+.vault-dot--warn { background: var(--warning); }
+.vault-dot--grey { background: var(--txt-dim); }
+.vault-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.vault-row-label { color: var(--txt); font-size: 12px; flex: 1; }
+.vault-row-path { color: var(--txt-dim); font-size: 11px; }
+.vault-row-ts { color: var(--txt-sub); font-size: 11px; }
+.vault-tab { padding: 4px 0; }

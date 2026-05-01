@@ -1001,6 +1001,59 @@ app.put('/api/global-settings', async (req, res) => {
   res.json({ ok: true });
 });
 
+app.get('/api/vault-status', async (_req, res) => {
+  const results = await Promise.all(VAULT_TARGETS.map(async (t) => {
+    let sourceExists = false, backupExists = false, inSync = false, lastBackup: string | null = null;
+    try { await fsAccess(t.src); sourceExists = true; } catch { /* missing */ }
+    try {
+      const bkStat = await stat(t.dest);
+      backupExists = true;
+      lastBackup = new Date(bkStat.mtimeMs).toISOString();
+      if (sourceExists) {
+        const srcStat = await stat(t.src);
+        inSync = srcStat.mtimeMs <= bkStat.mtimeMs;
+      }
+    } catch { /* no backup */ }
+    return { id: t.id, src: t.src, dest: t.dest, sourceExists, backupExists, inSync, lastBackup };
+  }));
+  res.json({ targets: results });
+});
+
+app.post('/api/vault-backup', async (req, res) => {
+  const { targets: targetIds } = req.body as { targets?: string[] };
+  const toBackup = targetIds
+    ? VAULT_TARGETS.filter(t => targetIds.includes(t.id))
+    : [...VAULT_TARGETS];
+  const results = await Promise.all(toBackup.map(async (t) => {
+    try {
+      await mkdir(path.dirname(t.dest), { recursive: true });
+      const content = await readFile(t.src, 'utf-8');
+      await atomicWrite(t.dest, content);
+      return { id: t.id, ok: true };
+    } catch (e) {
+      return { id: t.id, ok: false, error: String(e) };
+    }
+  }));
+  res.json({ results });
+});
+
+app.post('/api/vault-restore', async (req, res) => {
+  const { targets: targetIds } = req.body as { targets?: string[] };
+  if (!Array.isArray(targetIds)) { res.status(400).json({ error: 'targets array required' }); return; }
+  const toRestore = VAULT_TARGETS.filter(t => targetIds.includes(t.id));
+  const results = await Promise.all(toRestore.map(async (t) => {
+    try {
+      await mkdir(path.dirname(t.src), { recursive: true });
+      const content = await readFile(t.dest, 'utf-8');
+      await atomicWrite(t.src, content);
+      return { id: t.id, ok: true };
+    } catch (e) {
+      return { id: t.id, ok: false, error: String(e) };
+    }
+  }));
+  res.json({ results });
+});
+
 app.get('/api/recent-paths', async (_req, res) => {
   try {
     const raw = await readFile(RECENTS_FILE, 'utf-8');
