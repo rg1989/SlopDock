@@ -44,8 +44,11 @@ describe('FilePreview', () => {
     expect(notice).toBeTruthy();
   });
 
-  it('renders nothing when content is null — null prop renders empty/null', () => {
+  it('renders loading indicator when content is null — null prop shows loading dots', () => {
     const { container } = render(<FilePreview data={null} />);
-    expect(container.firstChild).toBeNull();
+    expect(container.firstChild).toBeTruthy();
+    // null data renders a loading animation (.fp-loading), not nothing
+    const el = container.firstChild as HTMLElement;
+    expect(el.className).toContain('fp-loading');
   });
 });

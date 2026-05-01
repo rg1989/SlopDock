@@ -49,11 +49,13 @@ const MockWebSocket = vi.fn().mockImplementation((url: string) => {
   return instance;
 });
 
-// Stub WebSocket.OPEN constant
-MockWebSocket.OPEN = 1;
-MockWebSocket.CONNECTING = 0;
-MockWebSocket.CLOSING = 2;
-MockWebSocket.CLOSED = 3;
+// Stub WebSocket.OPEN constant (cast to any to attach static constants)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const MockWebSocketAny = MockWebSocket as any;
+MockWebSocketAny.OPEN = 1;
+MockWebSocketAny.CONNECTING = 0;
+MockWebSocketAny.CLOSING = 2;
+MockWebSocketAny.CLOSED = 3;
 
 vi.stubGlobal('WebSocket', MockWebSocket);
 
@@ -84,8 +86,9 @@ describe('usePty', () => {
     );
 
     expect(MockWebSocket).toHaveBeenCalledTimes(1);
-    // jsdom default location is http://localhost/ → ws://localhost/ws
-    expect(MockWebSocket).toHaveBeenCalledWith('ws://localhost/ws');
+    // deriveWsUrl uses window.location.host (includes port if non-standard)
+    const calledUrl: string = (MockWebSocket.mock.calls[0] as [string])[0];
+    expect(calledUrl).toMatch(/^ws:\/\/localhost(:\d+)?\/ws$/);
   });
 
   it('uses wsUrl override when provided', () => {

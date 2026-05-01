@@ -1,7 +1,6 @@
 import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, beforeEach } from 'vitest';
 
-// @ts-expect-error — module does not exist yet (Wave 0 RED)
 import { useSessionManager } from '../client/hooks/useSessionManager';
 
 describe('useSessionManager', () => {
@@ -95,7 +94,7 @@ describe('useSessionManager', () => {
     it('writes PersistedSession to localStorage under slopdock_sessions_${cwd}', () => {
       const { result } = renderHook(() => useSessionManager());
 
-      let id: string;
+      let id = '';
       act(() => {
         id = result.current.spawn('/home/user/project');
       });
@@ -116,8 +115,8 @@ describe('useSessionManager', () => {
     it('sets activeId to previous session when closing the active session', () => {
       const { result } = renderHook(() => useSessionManager());
 
-      let id1: string;
-      let id2: string;
+      let id1 = '';
+      let id2 = '';
       act(() => {
         id1 = result.current.spawn('/tmp');
         id2 = result.current.spawn('/tmp');

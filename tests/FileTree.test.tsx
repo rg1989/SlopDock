@@ -22,7 +22,6 @@ describe('FileTree', () => {
       <FileTree
         nodes={testTree}
         selected={new Set<string>()}
-        onSelect={vi.fn()}
         onPreview={vi.fn()}
         changedPaths={new Set<string>()}
       />
@@ -38,7 +37,6 @@ describe('FileTree', () => {
       <FileTree
         nodes={testTree}
         selected={new Set<string>()}
-        onSelect={vi.fn()}
         onPreview={vi.fn()}
         changedPaths={new Set<string>()}
       />
@@ -47,8 +45,8 @@ describe('FileTree', () => {
     // Children are visible initially
     expect(screen.getByText('index.ts')).toBeTruthy();
 
-    // Click directory header to collapse
-    const dirHeader = screen.getByText('src').closest('[class*="ft-dir-header"]') ?? screen.getByText('src');
+    // Click the folder name span (which has onClick to toggle open state)
+    const dirHeader = screen.getByText('src');
     fireEvent.click(dirHeader);
 
     // Children should no longer be visible
@@ -67,33 +65,36 @@ describe('FileTree', () => {
       <FileTree
         nodes={testTree}
         selected={new Set<string>()}
-        onSelect={vi.fn()}
         onPreview={vi.fn()}
         changedPaths={new Set(['/test/project/src/index.ts'])}
       />
     );
 
-    const fileEl = screen.getByText('index.ts').closest('[class*="ft-file"]') ?? screen.getByText('index.ts').parentElement;
+    // ft-changed class is on the <li> element; closest('li') traverses to it
+    const fileEl = screen.getByText('index.ts').closest('li');
     expect(fileEl?.className).toContain('ft-changed');
   });
 
-  it('select file adds to selection — double-clicking a file calls onSelect with absolute path', () => {
-    const onSelect = vi.fn();
+  it('open file — double-clicking a file calls onOpen with absolute path', () => {
+    const onOpen = vi.fn();
     render(
       <FileTree
         nodes={testTree}
         selected={new Set<string>()}
-        onSelect={onSelect}
+        onOpen={onOpen}
         onPreview={vi.fn()}
         changedPaths={new Set<string>()}
       />
     );
 
     const fileEl = screen.getByText('index.ts');
-    fireEvent.doubleClick(fileEl);
+    // The component uses a click counter: 1st click = onPreview, 2nd click = onOpen
+    // Fire two separate click events to simulate double-click behavior
+    fireEvent.click(fileEl);
+    fireEvent.click(fileEl);
 
-    expect(onSelect).toHaveBeenCalledTimes(1);
-    expect(onSelect).toHaveBeenCalledWith('/test/project/src/index.ts');
+    expect(onOpen).toHaveBeenCalledTimes(1);
+    expect(onOpen).toHaveBeenCalledWith('/test/project/src/index.ts');
   });
 
   it('preview click — single-clicking a file calls onPreview with absolute path', () => {
@@ -102,7 +103,6 @@ describe('FileTree', () => {
       <FileTree
         nodes={testTree}
         selected={new Set<string>()}
-        onSelect={vi.fn()}
         onPreview={onPreview}
         changedPaths={new Set<string>()}
       />
