@@ -63,6 +63,16 @@ vi.stubGlobal('SpeechSynthesisUtterance', class {
   constructor(text: string) { this.text = text; }
 });
 
+// --- ResizeObserver mock (jsdom does not implement ResizeObserver) ---
+class MockResizeObserver {
+  callback: ResizeObserverCallback;
+  constructor(callback: ResizeObserverCallback) { this.callback = callback; }
+  observe = vi.fn();
+  unobserve = vi.fn();
+  disconnect = vi.fn();
+}
+vi.stubGlobal('ResizeObserver', MockResizeObserver);
+
 // Reset mocks between tests
 beforeEach(() => {
   vi.clearAllMocks();
