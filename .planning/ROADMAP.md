@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Voice I/O** - Voice transcription into the message composer, TTS playback of agent responses, mid-sentence interruption (completed 2026-04-30)
 - [x] **Phase 4: Multi-Session Tabs** - Terminal session tabs with stable UUIDs, live state indicators, name from first prompt, session history, persistence across reload (completed 2026-05-01)
 - [x] **Phase 5: Project Onboarding Wizard and Setup Health Check** - First-time onboarding modal + health check strip for git, CLAUDE.md, agent CLI, node_modules (completed 2026-05-01)
-- [ ] **Phase 6: .slop Config Vault** - Project-local and global config on disk, dotfile backup/restore for Claude, GSD, and second-brain configs
+- [x] **Phase 6: .slop Config Vault** - Project-local and global config on disk, dotfile backup/restore for Claude, GSD, and second-brain configs (completed 2026-05-01)
 
 ## Phase Details
 
@@ -119,7 +119,7 @@ Plans:
 **Goal:** Settings and onboarding state move from localStorage to per-project .slop/ and global ~/.slop/ on disk; dotfile vault backs up and restores Claude, GSD, git, and SSH configs; two pre-existing bugs (double-spawn, roadmap parser) are fixed.
 **Requirements**: SLOP-01, SLOP-02, SETTINGS-01, RECENT-01, VAULT-01, VAULT-02, VAULT-03, ONBOARD-01, ONBOARD-02, BUG-01, BUG-02
 **Depends on:** Phase 5
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans complete
 
 Plans:
 - [ ] 06-01-PLAN.md — Wave 0 test stubs + bug fixes (double-spawn dedup, parseRoadmapMd rewrite)
