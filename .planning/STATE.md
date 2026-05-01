@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Completed 06-01-PLAN.md — Wave 0 stubs and bug fixes
-last_updated: "2026-05-01T19:36:12.176Z"
+stopped_at: Completed 06-02-PLAN.md — slop config vault server endpoints
+last_updated: "2026-05-01T19:39:57.573Z"
 last_activity: "2026-04-30 - Completed quick task 1: add syntax colors and edit mode to file preview panel"
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 25
-  completed_plans: 21
+  completed_plans: 22
   percent: 100
 ---
 
@@ -70,6 +70,7 @@ Progress: [██████████] 100% (All Phases)
 | Phase 05-project-onboarding-wizard-and-setup-health-check P04 | 2 | 2 tasks | 4 files |
 | Phase 05-project-onboarding-wizard-and-setup-health-check P04 | 10 | 3 tasks | 4 files |
 | Phase 06-slop-config-vault P01 | 4min | 2 tasks | 9 files |
+| Phase 06-slop-config-vault P02 | 3min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -130,6 +131,7 @@ Recent decisions affecting current work:
 - [Phase 05-04]: Show all dots (ok+warn+error) in HealthStatusBar when bar is visible — HEALTH-03 test asserts health-dot--ok must appear alongside warn dots; tests are source of truth in TDD
 - [Phase 06-slop-config-vault]: initialSessionIdRef tracks initial session id synchronously so dedup works within a single act() batch without stale sessionsRef
 - [Phase 06-slop-config-vault]: parseRoadmapMd rewritten with two-pass algorithm: Pass 1 builds completedMap from overview, Pass 2 builds phases from detail sections
+- [Phase 06-slop-config-vault]: atomicWrite uses .tmp + rename pattern for safe filesystem writes
 
 ### Roadmap Evolution
 
@@ -154,6 +156,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-01T19:36:12.174Z
-Stopped at: Completed 06-01-PLAN.md — Wave 0 stubs and bug fixes
+Last session: 2026-05-01T19:39:57.569Z
+Stopped at: Completed 06-02-PLAN.md — slop config vault server endpoints
 Resume file: None
