@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, type FC } from 'react';
 import { createPortal } from 'react-dom';
 import type { AppSettings, PttCombo, AgentConfig, TypeIndicatorSize } from '../hooks/useSettings';
 import { pttComboToLabel, DEFAULT_AGENT } from '../hooks/useSettings';
+import { VaultTab } from './VaultTab';
 
 interface SettingsModalProps {
   settings: AppSettings;
@@ -179,7 +180,7 @@ const AgentCommandInput: FC<{
   );
 };
 
-type SettingsTab = 'display' | 'audio' | 'agent';
+type SettingsTab = 'display' | 'audio' | 'agent' | 'vault';
 
 export const SettingsModal: FC<SettingsModalProps> = ({ settings, onUpdate, onClose }) => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('display');
@@ -291,13 +292,13 @@ export const SettingsModal: FC<SettingsModalProps> = ({ settings, onUpdate, onCl
 
         {/* Tab bar */}
         <div className="settings-tab-bar">
-          {(['display', 'audio', 'agent'] as SettingsTab[]).map(tab => (
+          {(['display', 'audio', 'agent', 'vault'] as SettingsTab[]).map(tab => (
             <button
               key={tab}
               className={`settings-tab${activeTab === tab ? ' settings-tab--active' : ''}`}
               onClick={() => setActiveTab(tab)}
             >
-              {tab === 'display' ? 'Display' : tab === 'audio' ? 'Audio' : 'Agent & Tools'}
+              {tab === 'display' ? 'Display' : tab === 'audio' ? 'Audio' : tab === 'agent' ? 'Agent & Tools' : 'Vault'}
             </button>
           ))}
         </div>
@@ -408,6 +409,9 @@ export const SettingsModal: FC<SettingsModalProps> = ({ settings, onUpdate, onCl
               )}
             </div>
           )}
+
+          {/* Vault tab */}
+          {activeTab === 'vault' && <VaultTab />}
 
           {/* Agent & Tools tab */}
           {activeTab === 'agent' && (<>
