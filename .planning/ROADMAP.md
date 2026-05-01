@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: PTY Core** - Node.js backend + xterm.js frontend wired end-to-end; user can open Claude CLI in a real terminal session in the browser
 - [x] **Phase 2: File System** - VSCode-style file explorer sidebar, file attachment with previews, file preview panel (completed 2026-04-30)
 - [x] **Phase 3: Voice I/O** - Voice transcription into the message composer, TTS playback of agent responses, mid-sentence interruption (completed 2026-04-30)
-- [ ] **Phase 4: Multi-Session Tabs** - Terminal session tabs with stable UUIDs, live state indicators, name from first prompt, session history, persistence across reload
+- [x] **Phase 4: Multi-Session Tabs** - Terminal session tabs with stable UUIDs, live state indicators, name from first prompt, session history, persistence across reload (completed 2026-05-01)
 
 ## Phase Details
 
@@ -83,7 +83,7 @@ Phases execute in numeric order: 1 → 2 → 3
 | 1. PTY Core | 4/4 | Complete    | 2026-04-30 |
 | 2. File System | 4/4 | Complete    | 2026-04-30 |
 | 3. Voice I/O | 4/4 | Complete    | 2026-04-30 |
-| 4. Multi-Session Tabs | 3/4 | In Progress|  |
+| 4. Multi-Session Tabs | 4/4 | Complete   | 2026-05-01 |
 
 
 ### Phase 4: Multi-Session Tabs
@@ -91,7 +91,7 @@ Phases execute in numeric order: 1 → 2 → 3
 **Goal:** User can spawn multiple terminal sessions within the same workspace, navigate between them via a tab bar, see live status indicators (working/waiting/error/done), and have session names and history persist across reloads — structured for future full PTY reconnect.
 **Depends on:** Phase 3
 **Requirements**: SESS-01, SESS-02, SESS-03, SESS-04, SESS-05, SESS-06
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 - [ ] 04-01-PLAN.md — Wave 0 TDD scaffolds (useSessionManager tests, SessionTabBar tests, usePty sessionId extension)

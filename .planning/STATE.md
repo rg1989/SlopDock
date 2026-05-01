@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: "Completed 04-multi-session-tabs/04-03: SessionTabBar + SessionPane + App.tsx rewire"
-last_updated: "2026-05-01T13:05:14.658Z"
+stopped_at: "Checkpoint 04-04: Awaiting human browser verification of SESS-01 through SESS-06"
+last_updated: "2026-05-01T13:11:42.077Z"
 last_activity: "2026-04-30 - Completed quick task 1: add syntax colors and edit mode to file preview panel"
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 16
-  completed_plans: 15
+  completed_plans: 16
   percent: 100
 ---
 
@@ -63,6 +63,7 @@ Progress: [██████████] 100% (All Phases)
 | Phase 04-multi-session-tabs P01 | 6min | 2 tasks | 3 files |
 | Phase 04-multi-session-tabs P02 | 12min | 2 tasks | 6 files |
 | Phase 04-multi-session-tabs P03 | 8min | 2 tasks | 6 files |
+| Phase 04-multi-session-tabs P04 | 8min | 1 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -113,6 +114,7 @@ Recent decisions affecting current work:
 - [Phase 04-multi-session-tabs]: SessionPane owns terminal+composer+preview column; display:none isolates inactive panes without destroying xterm.js state
 - [Phase 04-multi-session-tabs]: onRegisterActions runs without deps on every render to keep App activeActionsRef current — avoids stale closure bugs on session callbacks
 - [Phase 04-multi-session-tabs]: VoiceBar stays app-level; routes to active session via activeSendInputRef mutable ref — avoids threading audio props through SessionPane
+- [Phase 04-multi-session-tabs]: Pre-existing test/implementation drift in FileTree, FilePreview, usePty, useSessionManager tests fixed inline to unblock checkpoint gate
 
 ### Roadmap Evolution
 
@@ -135,6 +137,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-01T13:05:14.654Z
-Stopped at: Completed 04-multi-session-tabs/04-03: SessionTabBar + SessionPane + App.tsx rewire
+Last session: 2026-05-01T13:11:42.075Z
+Stopped at: Checkpoint 04-04: Awaiting human browser verification of SESS-01 through SESS-06
 Resume file: None
