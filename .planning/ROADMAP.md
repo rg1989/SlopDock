@@ -2,7 +2,7 @@
 
 ## Overview
 
-Three phases that build on each other: first establish a fully-functional PTY terminal session in the browser, then add the file system layer (explorer, attachment, preview), then complete the voice interface (transcription input and streaming TTS output with interruption). Each phase delivers a coherent, verifiable capability.
+Phases 1–6 form the v1.0 foundation: PTY terminal, file system, voice I/O, multi-session tabs, onboarding, and the .slop config vault. Phases 7–9 are post-v1.0 enhancements delivered ad-hoc after the foundation was complete: Shiki-highlighted rules modal with vault git actions, the AI Guardian alignment system, and modal UX + UI state persistence. Phase 10 onward begins v1.1.
 
 ## Phases
 
@@ -18,6 +18,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 4: Multi-Session Tabs** - Terminal session tabs with stable UUIDs, live state indicators, name from first prompt, session history, persistence across reload (completed 2026-05-01)
 - [x] **Phase 5: Project Onboarding Wizard and Setup Health Check** - First-time onboarding modal + health check strip for git, CLAUDE.md, agent CLI, node_modules (completed 2026-05-01)
 - [x] **Phase 6: .slop Config Vault** - Project-local and global config on disk, dotfile backup/restore for Claude, GSD, and second-brain configs (completed 2026-05-01)
+- [x] **Phase 7: Rules Modal + Shiki + Vault Git Actions** - Shiki syntax highlighting in Rules modal, markdown code block rendering, vault git push/pull actions, vault auto-backup schedule, UI polish (completed 2026-05-01)
+- [x] **Phase 8: AI Guardian** - Standing Claude alignment rules loaded via CLAUDE.md; catches unplanned work, phase skipping, unmapped commits, and surfaces second brain pitfalls; per-project toggle in Settings (completed 2026-05-02)
+- [x] **Phase 9: UI Polish + State Persistence** - Modals anchored to fixed top position (no header jumping on tab switch), settings modal widened for 5 tabs, duplicate CSS cleanup; sidebar tab, panel widths, and open editor tabs restored on reload (completed 2026-05-02)
 
 ## Phase Details
 
@@ -82,10 +85,15 @@ Phases execute in numeric order: 1 → 2 → 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. PTY Core | 4/4 | Complete    | 2026-04-30 |
-| 2. File System | 4/4 | Complete    | 2026-04-30 |
-| 3. Voice I/O | 4/4 | Complete    | 2026-04-30 |
-| 4. Multi-Session Tabs | 4/4 | Complete   | 2026-05-01 |
+| 1. PTY Core | 4/4 | Complete | 2026-04-30 |
+| 2. File System | 4/4 | Complete | 2026-04-30 |
+| 3. Voice I/O | 4/4 | Complete | 2026-04-30 |
+| 4. Multi-Session Tabs | 4/4 | Complete | 2026-05-01 |
+| 5. Project Onboarding + Health Check | 4/4 | Complete | 2026-05-01 |
+| 6. .slop Config Vault | 5/5 | Complete | 2026-05-01 |
+| 7. Rules Modal + Shiki + Vault Git | ad-hoc | Complete | 2026-05-01 |
+| 8. AI Guardian | ad-hoc | Complete | 2026-05-02 |
+| 9. UI Polish + State Persistence | ad-hoc | Complete | 2026-05-02 |
 
 
 ### Phase 4: Multi-Session Tabs
@@ -127,3 +135,45 @@ Plans:
 - [ ] 06-03-PLAN.md — HealthStatusBar 6th dot + OnboardingModal rewire to per-project server-driven
 - [ ] 06-04-PLAN.md — Client migration (useSettings server-backed, FolderPicker recents server-backed)
 - [ ] 06-05-PLAN.md — Vault endpoints (status/backup/restore) + VaultTab UI + human checkpoint
+
+### Phase 7: Rules Modal + Shiki + Vault Git Actions
+
+**Goal:** Rules modal renders CLAUDE.md with full Shiki syntax highlighting and markdown code blocks; vault gains git push/pull actions and an auto-backup schedule; minor vault UI regressions fixed.
+**Depends on:** Phase 6
+**Delivered ad-hoc:** 2026-05-01 (outside GSD planning — retroactively recorded)
+**Plans:** 0 formal plans (ad-hoc delivery)
+
+What was built:
+- Shiki syntax highlighting in RulesModal code blocks
+- Markdown rendering with fenced code block support in rules view
+- Vault git push/pull action buttons
+- Vault auto-backup schedule wired to server
+- Fix: vault button/text collision, relative path display, tip copy
+
+### Phase 8: AI Guardian
+
+**Goal:** A standing set of Claude alignment rules — loaded via CLAUDE.md on every session — that catches roadmap drift, phase skipping, unmapped commits, and recurring issues; integrates with the second brain via a propose+confirm write-back pattern; toggle stored per-project in `.slop/config.json`.
+**Depends on:** Phase 6
+**Delivered ad-hoc:** 2026-05-02 (outside GSD planning — retroactively recorded)
+**Plans:** 0 formal plans (ad-hoc delivery)
+
+What was built:
+- `.slop/ai-guardian.md` — 5 rules: roadmap check, phase discipline, docs sync, commit traceability, second brain loop
+- `CLAUDE.md` updated to import `.slop/ai-guardian.md` via `@` include
+- `GET/PUT /api/slop-guardian` server endpoints — reads/writes `aiGuardian.enabled` in `.slop/config.json`
+- AI Guardian tab added to Settings modal with On/Off pill toggle
+- `slop-init` updated to include `aiGuardian: { enabled: true }` in all new project configs
+
+### Phase 9: UI Polish + State Persistence
+
+**Goal:** Modals stop jumping when switching tabs (header anchored at fixed screen position); settings modal wide enough for 5 tabs; UI state fully restored on reload so the user returns to exactly the same sidebar tab, panel widths, and open editor files.
+**Depends on:** Phase 6
+**Delivered ad-hoc:** 2026-05-02 (outside GSD planning — retroactively recorded)
+**Plans:** 0 formal plans (ad-hoc delivery)
+
+What was built:
+- `.modal-overlay` changed from `align-items: center` to `align-items: flex-start` + `padding-top: 10vh` — header no longer repositions on tab switch
+- Removed duplicate `.modal-panel` and `.modal-overlay` CSS rules that were silently capping widths
+- Settings modal widened to 520px to fit all 5 tabs without overflow
+- UI state persistence via `localStorage` (`slopdock_ui:*` keys): sidebar tab, sidebar width, editor panel width, open editor tabs per-cwd
+- `useEditorTabs.restoreFromSaved()` wired into `onRegisterActions` — open files restored on initial session mount
