@@ -98,3 +98,16 @@ Plans:
 - [ ] 04-02-PLAN.md — Protocol extension + useSessionManager hook (SESS-01, SESS-03, SESS-04, SESS-05, SESS-06)
 - [ ] 04-03-PLAN.md — SessionTabBar component + App.tsx multi-terminal wiring (SESS-02)
 - [ ] 04-04-PLAN.md — Full automated suite gate + human end-to-end verification checkpoint
+
+### Phase 5: Project Onboarding Wizard and Setup Health Check
+
+**Goal:** First-time onboarding modal guides new users to connect a project folder; ongoing health check strip surfaces whether the active project has the prerequisites Claude Code needs (git, CLAUDE.md, agent CLI in PATH, node_modules).
+**Requirements**: ONBOARD-01, ONBOARD-02, ONBOARD-03, HEALTH-01, HEALTH-02, HEALTH-03
+**Depends on:** Phase 4
+**Plans:** 4 plans
+
+Plans:
+- [ ] 05-01-PLAN.md — Wave 0 test scaffolds (OnboardingModal, useProjectHealth, HealthStatusBar RED stubs)
+- [ ] 05-02-PLAN.md — OnboardingModal component + App.tsx wiring + health CSS classes
+- [ ] 05-03-PLAN.md — GET /api/project-health endpoint + useProjectHealth hook
+- [ ] 05-04-PLAN.md — HealthStatusBar component + App.tsx health wiring + human verification checkpoint
