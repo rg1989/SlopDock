@@ -27,7 +27,10 @@ export function Terminal({ onReady, sendResize }: TerminalProps) {
 
       terminal = new XTerm({
         scrollback: 5000,
-        theme: { background: '#0d1117' },
+        theme: {
+          background: '#0d1117',
+          selectionBackground: 'rgba(212, 132, 90, 0.35)',
+        },
       });
 
       const fitAddon = new FitAddon();

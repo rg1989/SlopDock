@@ -1,6 +1,24 @@
 import '@testing-library/jest-dom';
 import { vi, beforeEach } from 'vitest';
 
+// --- AudioContext mock (jsdom does not implement Web Audio API) ---
+class MockAudioBufferSourceNode {
+  buffer: AudioBuffer | null = null;
+  onended: (() => void) | null = null;
+  connect = vi.fn();
+  start = vi.fn(() => { this.onended?.(); });
+  stop = vi.fn();
+}
+class MockAudioContext {
+  state = 'running';
+  destination = {};
+  createBufferSource = vi.fn(() => new MockAudioBufferSourceNode());
+  decodeAudioData = vi.fn((_ab: ArrayBuffer) =>
+    Promise.resolve({} as AudioBuffer)
+  );
+}
+vi.stubGlobal('AudioContext', MockAudioContext);
+
 // --- Web Speech API mocks (jsdom does not implement these) ---
 
 class MockSpeechRecognition {

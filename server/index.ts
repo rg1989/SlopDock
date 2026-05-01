@@ -55,6 +55,37 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Known AI agent CLIs — checked against PATH to power the settings combobox
+const KNOWN_AGENTS = ['claude', 'opencode', 'aider', 'gemini', 'codex', 'hermes', 'goose'];
+
+async function commandExists(cmd: string): Promise<string | null> {
+  try {
+    const { stdout } = await execFileAsync('which', [cmd]);
+    return stdout.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+// GET /api/known-agents — returns installed subset of known agent CLIs
+app.get('/api/known-agents', async (_req, res) => {
+  const results = await Promise.all(
+    KNOWN_AGENTS.map(async (cmd) => ({ cmd, path: await commandExists(cmd) }))
+  );
+  res.json(results.filter(r => r.path !== null));
+});
+
+// GET /api/which?cmd=... — checks if an arbitrary command exists in PATH
+app.get('/api/which', async (req, res) => {
+  const cmd = String(req.query.cmd ?? '').trim();
+  if (!cmd || cmd.includes('/') || cmd.includes(' ')) {
+    res.status(400).json({ error: 'invalid command' });
+    return;
+  }
+  const resolved = await commandExists(cmd);
+  res.json({ found: resolved !== null, path: resolved });
+});
+
 // Open native macOS folder picker, return the selected absolute path
 app.post('/api/pick-folder', async (_req, res) => {
   if (process.platform !== 'darwin') {

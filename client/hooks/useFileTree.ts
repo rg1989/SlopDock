@@ -3,9 +3,22 @@ import type { FileNode } from '../components/FileTree';
 
 const POLL_INTERVAL = 3000;
 
+export interface GitFileEntry {
+  path: string;
+  status: string;
+  origPath?: string;
+}
+
+export interface GitStatus {
+  staged: GitFileEntry[];
+  unstaged: GitFileEntry[];
+  changedPaths: Set<string>;
+}
+
 export function useFileTree(cwd: string | null) {
   const [tree, setTree] = useState<FileNode[]>([]);
   const [changedPaths, setChangedPaths] = useState<Set<string>>(new Set());
+  const [gitStatus, setGitStatus] = useState<GitStatus>({ staged: [], unstaged: [], changedPaths: new Set() });
   const [mode, setMode] = useState<'all' | 'changes'>('all');
   const modeRef = useRef(mode);
   modeRef.current = mode;
@@ -22,13 +35,19 @@ export function useFileTree(cwd: string | null) {
     if (!cwd) return;
     fetch(`/api/git-status?cwd=${encodeURIComponent(cwd)}`)
       .then((res) => res.json())
-      .then((data: { changed: string[] }) => setChangedPaths(new Set(data.changed)))
-      .catch(() => setChangedPaths(new Set()));
+      .then((data: { staged: GitFileEntry[]; unstaged: GitFileEntry[]; changedPaths: string[] }) => {
+        const pathSet = new Set(data.changedPaths ?? []);
+        setChangedPaths(pathSet);
+        setGitStatus({ staged: data.staged ?? [], unstaged: data.unstaged ?? [], changedPaths: pathSet });
+      })
+      .catch(() => {
+        setChangedPaths(new Set());
+        setGitStatus({ staged: [], unstaged: [], changedPaths: new Set() });
+      });
   }, [cwd]);
 
-  // Initial load + polling
   useEffect(() => {
-    if (!cwd) { setTree([]); setChangedPaths(new Set()); return; }
+    if (!cwd) { setTree([]); setChangedPaths(new Set()); setGitStatus({ staged: [], unstaged: [], changedPaths: new Set() }); return; }
     loadTree();
     const id = setInterval(() => {
       loadTree();
@@ -37,10 +56,9 @@ export function useFileTree(cwd: string | null) {
     return () => clearInterval(id);
   }, [cwd, loadTree, loadChanges]);
 
-  // Fetch git status immediately when mode switches to 'changes'
   useEffect(() => {
     if (mode === 'changes') loadChanges();
   }, [mode, loadChanges]);
 
-  return { tree, changedPaths, mode, setMode };
+  return { tree, changedPaths, gitStatus, loadChanges, mode, setMode };
 }

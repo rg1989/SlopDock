@@ -3,7 +3,9 @@ import React, { useState, useEffect } from 'react';
 export type FilePreviewData =
   | { type: 'text'; content: string }
   | { type: 'binary'; isImage: true; base64: string; ext: string }
-  | { type: 'binary'; isImage: false; ext: string };
+  | { type: 'binary'; isImage: false; ext: string }
+  | { type: 'diff'; content: string }
+  | { type: 'not-found' };
 
 interface FilePreviewProps {
   data: FilePreviewData | null;
@@ -14,139 +16,101 @@ interface FilePreviewProps {
 }
 
 // ---------------------------------------------------------------------------
-// Tokenizer
+// Server-side highlight via /api/highlight (Node.js Shiki — no browser bundle)
 // ---------------------------------------------------------------------------
 
-type Token = { type: string; text: string };
-
-type LangRule = { type: string; re: RegExp };
-
-function buildRules(patterns: [string, string][]): LangRule[] {
-  return patterns.map(([type, src]) => ({ type, re: new RegExp(src, 'y') }));
-}
-
-const LANG_RULES: Record<string, LangRule[]> = {
-  js: buildRules([
-    ['comment',  '//.*?(?=\\n|$)|/\\*[\\s\\S]*?\\*/'],
-    ['string',   '"[^"\\\\]*(?:\\\\.[^"\\\\]*)*"|\'[^\'\\\\]*(?:\\\\.[^\'\\\\]*)*\'|`[^`\\\\]*(?:\\\\.[^`\\\\]*)*`'],
-    ['keyword',  '\\b(const|let|var|function|return|if|else|for|while|class|import|export|from|default|async|await|typeof|new|this|try|catch|throw|null|undefined|true|false)\\b'],
-    ['number',   '\\b\\d+\\.?\\d*\\b'],
-    ['property', '\\b[a-z_$][\\w$]*(?=\\s*:(?!:))'],
-    ['operator', '===|!==|>=|<=|=>|\\|\\||&&|\\.\\.\\.'],
-    ['plain',    '[\\s\\S]'],
-  ]),
-  python: buildRules([
-    ['comment',  '#.*?(?=\\n|$)'],
-    ['string',   '"""[\\s\\S]*?"""|\'\'\'[\\s\\S]*?\'\'\'|"[^"\\\\]*(?:\\\\.[^"\\\\]*)*"|\'[^\'\\\\]*(?:\\\\.[^\'\\\\]*)*\''],
-    ['keyword',  '\\b(def|class|return|if|elif|else|for|while|import|from|as|with|try|except|finally|raise|pass|True|False|None|and|or|not|in|is|lambda|yield|self)\\b'],
-    ['number',   '\\b\\d+\\.?\\d*\\b'],
-    ['plain',    '[\\s\\S]'],
-  ]),
-  json: buildRules([
-    ['string',  '"[^"\\\\]*(?:\\\\.[^"\\\\]*)*"'],
-    ['number',  '-?\\b\\d+\\.?\\d*(?:[eE][+\\-]?\\d+)?\\b'],
-    ['keyword', '\\b(true|false|null)\\b'],
-    ['plain',   '[\\s\\S]'],
-  ]),
-  css: buildRules([
-    ['comment',   '/\\*[\\s\\S]*?\\*/'],
-    ['string',    '"[^"]*"|\'[^\']*\''],
-    ['css-var',   '--[-\\w]+'],
-    ['selector',  '\\.[-\\w]+|#[-\\w]+|[@:][-\\w]+'],
-    ['property',  '[-\\w]+(?=\\s*:)'],
-    ['value',     ':.*?(?=;|}|$)'],
-    ['css-unit',  '\\b\\d+\\.?\\d*(?:px|em|rem|vh|vw|%|s|ms|deg)\\b'],
-    ['css-func',  '\\b(?:rgb|rgba|hsl|hsla|var|calc|linear-gradient|radial-gradient)(?=\\()'],
-    ['plain',     '[\\s\\S]'],
-  ]),
-  html: buildRules([
-    ['comment',  '<!--[\\s\\S]*?-->'],
-    ['tag',      '<[/!]?[-\\w]+'],
-    ['attr',     '[-\\w]+='],
-    ['string',   '"[^"]*"|\'[^\']*\''],
-    ['close',    '>'],
-    ['plain',    '[\\s\\S]'],
-  ]),
-  shell: buildRules([
-    ['comment',  '#.*?(?=\\n|$)'],
-    ['string',   '"[^"\\\\]*(?:\\\\.[^"\\\\]*)*"|\'[^\']*\''],
-    ['keyword',  '\\b(if|then|else|fi|for|do|done|while|case|esac|function|return|export|local|echo|cd|ls|grep|find|mkdir|rm|cp|mv)\\b'],
-    ['plain',    '[\\s\\S]'],
-  ]),
-  markdown: buildRules([
-    ['heading',  '#{1,6} [^\n]*'],
-    ['bold',     '\\*\\*[^*]+\\*\\*|__[^_]+__'],
-    ['italic',   '\\*[^*\n]+\\*|_[^_\n]+_'],
-    ['code',     '`[^`\n]+`'],
-    ['link',     '\\[[^\\]]*\\]\\([^)]*\\)'],
-    ['plain',    '[\\s\\S]'],
-  ]),
-};
-
-function extToLang(ext: string): string {
-  switch (ext.toLowerCase()) {
-    case '.ts': case '.tsx': case '.js': case '.jsx': case '.mjs': return 'js';
-    case '.py': return 'python';
-    case '.json': return 'json';
-    case '.css': case '.scss': return 'css';
-    case '.md': case '.markdown': return 'markdown';
-    case '.html': case '.htm': case '.xml': case '.svg': return 'html';
-    case '.sh': case '.bash': case '.zsh': return 'shell';
-    default: return 'plain';
+async function fetchHighlight(content: string, lang: string): Promise<string | null> {
+  try {
+    const res = await fetch('/api/highlight', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content, lang }),
+    });
+    const { html } = await res.json() as { html: string | null };
+    return html;
+  } catch {
+    return null;
   }
 }
 
-function tokenize(code: string, ext: string): Token[] {
-  const lang = extToLang(ext);
-  if (lang === 'plain') return [{ type: 'plain', text: code }];
-
-  const rules = LANG_RULES[lang];
-  const tokens: Token[] = [];
-  let pos = 0;
-
-  while (pos < code.length) {
-    let matched = false;
-    for (const rule of rules) {
-      rule.re.lastIndex = pos;
-      const m = rule.re.exec(code);
-      if (m && m.index === pos) {
-        tokens.push({ type: rule.type, text: m[0] });
-        pos += m[0].length;
-        matched = true;
-        break;
-      }
-    }
-    if (!matched) {
-      // Fallback: advance one character as plain
-      tokens.push({ type: 'plain', text: code[pos] });
-      pos += 1;
-    }
+function extToShikiLang(filePath: string | null | undefined): string {
+  if (!filePath) return 'text';
+  const base = filePath.split('/').pop() ?? '';
+  if (base === 'Dockerfile') return 'dockerfile';
+  if (base === '.gitignore' || base === '.gitattributes') return 'gitignore';
+  const dot = filePath.lastIndexOf('.');
+  if (dot === -1) return 'text';
+  switch (filePath.slice(dot).toLowerCase()) {
+    case '.ts':                          return 'typescript';
+    case '.tsx':                         return 'tsx';
+    case '.js': case '.mjs': case '.cjs': return 'javascript';
+    case '.jsx':                         return 'jsx';
+    case '.py':                          return 'python';
+    case '.json': case '.jsonc':         return 'json';
+    case '.css':                         return 'css';
+    case '.scss':                        return 'scss';
+    case '.md': case '.markdown':        return 'markdown';
+    case '.html': case '.htm':           return 'html';
+    case '.xml': case '.svg':            return 'xml';
+    case '.sh': case '.bash': case '.zsh': return 'bash';
+    case '.yml': case '.yaml':           return 'yaml';
+    case '.toml':                        return 'toml';
+    case '.rs':                          return 'rust';
+    case '.go':                          return 'go';
+    case '.java':                        return 'java';
+    case '.c': case '.h':               return 'c';
+    case '.cpp': case '.cc': case '.hpp': return 'cpp';
+    case '.sql':                         return 'sql';
+    case '.diff': case '.patch':         return 'diff';
+    default:                             return 'text';
   }
-
-  return tokens;
 }
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 function getMimeType(ext: string): string {
   switch (ext.toLowerCase()) {
-    case '.png': return 'image/png';
-    case '.jpg':
-    case '.jpeg': return 'image/jpeg';
-    case '.gif': return 'image/gif';
-    case '.webp': return 'image/webp';
-    case '.svg': return 'image/svg+xml';
-    default: return 'image/png';
+    case '.png':              return 'image/png';
+    case '.jpg': case '.jpeg': return 'image/jpeg';
+    case '.gif':              return 'image/gif';
+    case '.webp':             return 'image/webp';
+    case '.svg':              return 'image/svg+xml';
+    default:                  return 'image/png';
   }
 }
 
-function getExt(filePath: string | null | undefined): string {
-  if (!filePath) return '';
-  const dot = filePath.lastIndexOf('.');
-  if (dot === -1) return '';
-  return filePath.slice(dot);
+// ---------------------------------------------------------------------------
+// Unified diff renderer
+// ---------------------------------------------------------------------------
+
+function DiffView({ content }: { content: string }) {
+  if (!content.trim()) {
+    return <div className="diff-empty">No changes to display</div>;
+  }
+
+  const lines = content.split('\n');
+
+  return (
+    <div className="diff-view">
+      <pre className="diff-pre">
+        {lines.map((line, i) => {
+          let cls = 'diff-line';
+          if (line.startsWith('+') && !line.startsWith('+++')) cls += ' diff-add';
+          else if (line.startsWith('-') && !line.startsWith('---')) cls += ' diff-del';
+          else if (line.startsWith('@@')) cls += ' diff-hunk';
+          else if (line.startsWith('---') || line.startsWith('+++')) cls += ' diff-file-header';
+          else if (line.startsWith('diff ') || line.startsWith('index ')) cls += ' diff-meta';
+          return (
+            <div key={i} className={cls}>
+              <span className="diff-gutter">
+                {line.startsWith('+') && !line.startsWith('+++') ? '+' :
+                 line.startsWith('-') && !line.startsWith('---') ? '−' : ' '}
+              </span>
+              <span className="diff-content">{line.startsWith('+') || line.startsWith('-') ? line.slice(1) : line}</span>
+            </div>
+          );
+        })}
+      </pre>
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -157,19 +121,63 @@ export function FilePreview({ data, filePath, cwd, initialEditing, onPromote }: 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
+  const [highlightedHtml, setHighlightedHtml] = useState<string | null>(null);
 
-  // Reset edit mode when the previewed file changes; enter edit mode if initialEditing is set
+  // Reset on file change; enter edit mode if initialEditing is set
   useEffect(() => {
     setEditing(!!initialEditing);
     setDraft(initialEditing && data?.type === 'text' ? data.content : '');
+    setHighlightedHtml(null);
   }, [data, initialEditing]);
 
-  if (data === null) return null;
+  // Highlight code via server-side Shiki
+  useEffect(() => {
+    if (!data || data.type !== 'text' || editing) return;
+    let cancelled = false;
+    const lang = extToShikiLang(filePath);
+    fetchHighlight(data.content, lang).then(html => {
+      if (!cancelled) setHighlightedHtml(html);
+    });
+    return () => { cancelled = true; };
+  }, [data, filePath, editing]);
+
+  if (data === null) {
+    return (
+      <div className="fp-loading">
+        <div className="fp-loading-dot" />
+        <div className="fp-loading-dot" />
+        <div className="fp-loading-dot" />
+      </div>
+    );
+  }
+
+  if (data.type === 'not-found') {
+    const parts = (filePath ?? '').split('/');
+    const filename = parts.pop() ?? filePath ?? 'unknown';
+    const dir = parts.join('/') || '/';
+    return (
+      <div className="fp-not-found">
+        <svg className="fp-not-found-icon" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
+          <polyline points="13 2 13 9 20 9"/>
+          <line x1="9" y1="14" x2="15" y2="14"/>
+        </svg>
+        <p className="fp-not-found-title">File no longer available</p>
+        <p className="fp-not-found-name">{filename}</p>
+        <p className="fp-not-found-path">
+          <span className="fp-not-found-label">Last known path</span>
+          <code className="fp-not-found-code">{filePath ?? 'unknown'}</code>
+        </p>
+        <p className="fp-not-found-dir">
+          <span className="fp-not-found-label">Searched in</span>
+          <code className="fp-not-found-code">{dir}</code>
+        </p>
+      </div>
+    );
+  }
 
   if (data.type === 'text') {
     const content = data.content;
-    const ext = getExt(filePath);
-    const tokens = tokenize(content, ext);
 
     function handleEdit() {
       onPromote?.();
@@ -203,49 +211,34 @@ export function FilePreview({ data, filePath, cwd, initialEditing, onPromote }: 
         <div className="fp-toolbar">
           {editing ? (
             <>
-              <button
-                className="fp-btn primary"
-                onClick={handleSave}
-                disabled={saving || !filePath || !cwd}
-              >
+              <button className="fp-btn primary" onClick={handleSave} disabled={saving || !filePath || !cwd}>
                 {saving ? 'Saving...' : 'Save'}
               </button>
-              <button className="fp-btn" onClick={handleCancel} disabled={saving}>
-                Cancel
-              </button>
+              <button className="fp-btn" onClick={handleCancel} disabled={saving}>Cancel</button>
             </>
           ) : (
-            <button className="fp-btn" onClick={handleEdit}>
-              Edit
-            </button>
+            <button className="fp-btn" onClick={handleEdit}>Edit</button>
           )}
         </div>
         {editing ? (
-          <textarea
-            className="fp-edit-area"
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-          />
+          <textarea className="fp-edit-area" value={draft} onChange={(e) => setDraft(e.target.value)} />
+        ) : highlightedHtml ? (
+          <div className="fp-shiki" dangerouslySetInnerHTML={{ __html: highlightedHtml }} />
         ) : (
-          <pre className="fp-text">
-            {tokens.map((tok, i) => (
-              <span key={i} className={`tok-${tok.type}`}>{tok.text}</span>
-            ))}
-          </pre>
+          <pre className="fp-text">{content}</pre>
         )}
       </div>
     );
   }
 
+  if (data.type === 'diff') {
+    return <DiffView content={data.content} />;
+  }
+
   if (data.isImage) {
     const mime = getMimeType(data.ext);
     return (
-      <img
-        className="fp-image"
-        src={`data:${mime};base64,${data.base64}`}
-        alt="preview"
-        style={{ maxWidth: '100%' }}
-      />
+      <img className="fp-image" src={`data:${mime};base64,${data.base64}`} alt="preview" style={{ maxWidth: '100%' }} />
     );
   }
 

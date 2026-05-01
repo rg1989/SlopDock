@@ -58,32 +58,81 @@ export async function buildFileTree(root: string, depth = 0): Promise<FileNode[]
   return [...dirs, ...files];
 }
 
-export async function getGitChangedPaths(cwd: string): Promise<string[]> {
+export interface GitFileEntry {
+  path: string;   // absolute path
+  status: string; // M, A, D, R, C, U, ?
+  origPath?: string; // for renames: the old path (absolute)
+}
+
+export interface GitStatusResult {
+  staged: GitFileEntry[];
+  unstaged: GitFileEntry[];
+  changedPaths: string[]; // flat list of all changed absolute paths for file tree highlighting
+}
+
+function stripQuotes(s: string): string {
+  if (s.startsWith('"') && s.endsWith('"')) return s.slice(1, -1);
+  return s;
+}
+
+export async function getGitStatus(cwd: string): Promise<GitStatusResult> {
   try {
     const { stdout } = await execFileAsync('git', ['status', '--porcelain'], { cwd });
     const lines = stdout.split('\n').filter((l) => l.length > 0);
-    const paths: string[] = [];
+
+    const staged: GitFileEntry[] = [];
+    const unstaged: GitFileEntry[] = [];
+    const changedPaths: string[] = [];
 
     for (const line of lines) {
-      // Porcelain v1: "XY relpath" — relpath starts at index 3
+      const xy = line.slice(0, 2);
+      const x = xy[0]; // index (staged) status
+      const y = xy[1]; // working tree (unstaged) status
       let relPath = line.slice(3);
 
-      // Handle rename format: "old -> new"
+      // Handle rename: "old -> new"
+      let origRelPath: string | undefined;
       if (relPath.includes(' -> ')) {
-        relPath = relPath.split(' -> ').pop()!;
+        const parts = relPath.split(' -> ');
+        origRelPath = stripQuotes(parts[0]);
+        relPath = parts[1];
+      }
+      relPath = stripQuotes(relPath);
+
+      const absPath = path.join(cwd, relPath);
+      const absOrig = origRelPath ? path.join(cwd, origRelPath) : undefined;
+
+      // Skip ignored files
+      if (x === '!' && y === '!') continue;
+
+      // Untracked
+      if (x === '?' && y === '?') {
+        unstaged.push({ path: absPath, status: '?' });
+        changedPaths.push(absPath);
+        continue;
       }
 
-      // Strip surrounding double-quotes (git wraps paths with spaces)
-      if (relPath.startsWith('"') && relPath.endsWith('"')) {
-        relPath = relPath.slice(1, -1);
+      // Staged changes (index status)
+      if (x !== ' ' && x !== '?') {
+        staged.push({ path: absPath, status: x, origPath: absOrig });
+        if (!changedPaths.includes(absPath)) changedPaths.push(absPath);
       }
 
-      paths.push(path.join(cwd, relPath));
+      // Unstaged changes (working tree status)
+      if (y !== ' ' && y !== '?') {
+        unstaged.push({ path: absPath, status: y });
+        if (!changedPaths.includes(absPath)) changedPaths.push(absPath);
+      }
     }
 
-    return paths;
+    return { staged, unstaged, changedPaths };
   } catch {
-    // Not a git repo or git not found — return empty array
-    return [];
+    return { staged: [], unstaged: [], changedPaths: [] };
   }
+}
+
+// Kept for backward compatibility — returns flat list of changed absolute paths
+export async function getGitChangedPaths(cwd: string): Promise<string[]> {
+  const { changedPaths } = await getGitStatus(cwd);
+  return changedPaths;
 }
