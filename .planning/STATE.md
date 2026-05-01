@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Completed 05-02-PLAN.md — OnboardingModal component and health bar CSS
-last_updated: "2026-05-01T17:54:55.558Z"
+stopped_at: Completed 05-03-PLAN.md — Project health endpoint + useProjectHealth hook
+last_updated: "2026-05-01T17:55:26.216Z"
 last_activity: "2026-04-30 - Completed quick task 1: add syntax colors and edit mode to file preview panel"
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 20
-  completed_plans: 18
+  completed_plans: 19
   percent: 100
 ---
 
@@ -66,6 +66,7 @@ Progress: [██████████] 100% (All Phases)
 | Phase 04-multi-session-tabs P04 | 8min | 1 tasks | 4 files |
 | Phase 05-project-onboarding-wizard-and-setup-health-check P01 | 2 | 2 tasks | 3 files |
 | Phase 05-project-onboarding-wizard-and-setup-health-check P02 | 1min | 2 tasks | 4 files |
+| Phase 05-project-onboarding-wizard-and-setup-health-check P03 | 525402min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -120,6 +121,8 @@ Recent decisions affecting current work:
 - [Phase 05-project-onboarding-wizard-and-setup-health-check]: Wave 0 RED pattern extended to Phase 5 — same @ts-expect-error technique from Phase 02 and 04, import errors confirm modules don't exist yet
 - [Phase 05-02]: Gate OnboardingModal visibility on stable initialPath (useState initial value), not cwd — cwd may be null momentarily even for returning users
 - [Phase 05-02]: onboardingDone state tracked in App instead of re-reading localStorage on every render — cleaner and idiomatic React
+- [Phase 05-03]: hasNodeModules returns null (not false) when package.json absent — avoids false alarm for non-JS projects
+- [Phase 05-03]: 100ms debounce in useProjectHealth guards against osascript path delivery timing race condition
 
 ### Roadmap Evolution
 
@@ -143,6 +146,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-01T17:54:55.555Z
-Stopped at: Completed 05-02-PLAN.md — OnboardingModal component and health bar CSS
+Last session: 2026-05-01T17:55:26.214Z
+Stopped at: Completed 05-03-PLAN.md — Project health endpoint + useProjectHealth hook
 Resume file: None
