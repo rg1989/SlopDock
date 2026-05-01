@@ -2968,14 +2968,9 @@ html, body, #root { height: 100%; background: var(--bg); color: var(--txt); font
   justify-content: center;
 }
 
-.modal-panel {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+.confirm-panel {
   padding: 20px 24px;
-  min-width: 320px;
-  max-width: 480px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  max-width: 400px;
 }
 
 .modal-title {

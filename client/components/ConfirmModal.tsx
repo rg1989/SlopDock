@@ -10,7 +10,7 @@ interface ConfirmModalProps {
 
 export const ConfirmModal: FC<ConfirmModalProps> = ({ title, message, onConfirm, onCancel, loading }) => (
   <div className="modal-overlay" onClick={onCancel}>
-    <div className="modal-panel" onClick={e => e.stopPropagation()}>
+    <div className="modal-panel confirm-panel" onClick={e => e.stopPropagation()}>
       <div className="modal-title">{title}</div>
       <div className="modal-message">{message}</div>
       <div className="modal-actions">
