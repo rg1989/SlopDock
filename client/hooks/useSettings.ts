@@ -24,12 +24,15 @@ export const DEFAULT_AGENT: AgentConfig = {
   label: 'Claude',
 };
 
+export type TypeIndicatorSize = 14 | 11 | 9 | 'none';
+
 export interface AppSettings {
   recordingMode: 'toggle' | 'hold';
   pttKey: PttCombo | null;
   sidebarTabsOrientation: 'horizontal' | 'vertical';
   showHiddenFiles: boolean;
   agent: AgentConfig;
+  typeIndicatorSize: TypeIndicatorSize;
 }
 
 const DEFAULTS: AppSettings = {
@@ -38,6 +41,7 @@ const DEFAULTS: AppSettings = {
   sidebarTabsOrientation: 'horizontal',
   showHiddenFiles: true,
   agent: DEFAULT_AGENT,
+  typeIndicatorSize: 14,
 };
 
 const STORAGE_KEY = 'slopdock_settings';

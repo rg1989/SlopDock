@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, type FC } from 'react';
 import { createPortal } from 'react-dom';
-import type { AppSettings, PttCombo, AgentConfig } from '../hooks/useSettings';
+import type { AppSettings, PttCombo, AgentConfig, TypeIndicatorSize } from '../hooks/useSettings';
 import { pttComboToLabel, DEFAULT_AGENT } from '../hooks/useSettings';
 
 interface SettingsModalProps {
@@ -179,7 +179,10 @@ const AgentCommandInput: FC<{
   );
 };
 
+type SettingsTab = 'display' | 'audio' | 'agent';
+
 export const SettingsModal: FC<SettingsModalProps> = ({ settings, onUpdate, onClose }) => {
+  const [activeTab, setActiveTab] = useState<SettingsTab>('display');
   const [capturing, setCapturing] = useState(false);
   const [liveCombo, setLiveCombo] = useState<PttCombo | null>(null);
   const [agentDraft, setAgentDraft] = useState<{ command: string; args: string; label: string }>({
@@ -286,155 +289,183 @@ export const SettingsModal: FC<SettingsModalProps> = ({ settings, onUpdate, onCl
           </button>
         </div>
 
+        {/* Tab bar */}
+        <div className="settings-tab-bar">
+          {(['display', 'audio', 'agent'] as SettingsTab[]).map(tab => (
+            <button
+              key={tab}
+              className={`settings-tab${activeTab === tab ? ' settings-tab--active' : ''}`}
+              onClick={() => setActiveTab(tab)}
+            >
+              {tab === 'display' ? 'Display' : tab === 'audio' ? 'Audio' : 'Agent & Tools'}
+            </button>
+          ))}
+        </div>
+
         {/* Body */}
         <div className="modal-body">
 
-          {/* Display group: hidden files + sidebar tabs */}
-          <div className="settings-group">
-            <div className="settings-group-label">Display</div>
-
-            <div className="settings-section settings-section--row">
-              <div className="settings-section-label">
-                Hidden Files
-                <InfoTip tip="Show or hide dotfiles and dotfolders (e.g. .git, .env) in the file tree. Hidden files appear slightly dimmed when shown." />
-              </div>
-              <div className="pill-toggle">
-                <button
-                  className={`pill-opt pill-opt--icon${settings.showHiddenFiles ? ' pill-opt--on' : ''}`}
-                  onClick={() => onUpdate({ showHiddenFiles: true })}
-                ><EyeIcon /> Show</button>
-                <button
-                  className={`pill-opt pill-opt--icon${!settings.showHiddenFiles ? ' pill-opt--on' : ''}`}
-                  onClick={() => onUpdate({ showHiddenFiles: false })}
-                ><EyeOffIcon /> Hide</button>
-              </div>
-            </div>
-
-            <div className="settings-section settings-section--row">
-              <div className="settings-section-label">
-                Sidebar Tabs
-                <InfoTip tip="Horizontal: tabs appear as a row at the top of the sidebar. Vertical: tabs appear as a compact icon strip on the left edge of the sidebar." />
-              </div>
-              <div className="pill-toggle">
-                <button
-                  className={`pill-opt${settings.sidebarTabsOrientation === 'horizontal' ? ' pill-opt--on' : ''}`}
-                  onClick={() => onUpdate({ sidebarTabsOrientation: 'horizontal' })}
-                >Horizontal</button>
-                <button
-                  className={`pill-opt${settings.sidebarTabsOrientation === 'vertical' ? ' pill-opt--on' : ''}`}
-                  onClick={() => onUpdate({ sidebarTabsOrientation: 'vertical' })}
-                >Vertical</button>
-              </div>
-            </div>
-          </div>
-
-          {/* Audio group: recording mode + push-to-talk */}
-          <div className="settings-group">
-            <div className="settings-group-label">Audio</div>
-
-            <div className="settings-section settings-section--row">
-              <div className="settings-section-label">
-                Recording Mode
-                <InfoTip tip="Toggle: click once to start recording, click again to stop. Hold: press and hold the button or shortcut while speaking, release to send." />
-              </div>
-              <div className="pill-toggle">
-                <button
-                  className={`pill-opt${settings.recordingMode === 'toggle' ? ' pill-opt--on' : ''}`}
-                  onClick={() => onUpdate({ recordingMode: 'toggle' })}
-                >Toggle</button>
-                <button
-                  className={`pill-opt${settings.recordingMode === 'hold' ? ' pill-opt--on' : ''}`}
-                  onClick={() => onUpdate({ recordingMode: 'hold' })}
-                >Hold</button>
-              </div>
-            </div>
-
-            <div className="settings-section settings-section--row">
-              <div className="settings-section-label">
-                Push-to-Talk
-                <InfoTip tip="Keyboard shortcut to trigger recording. Click the key display to set a new combo. Modifier keys (Ctrl, Alt, Shift, ⌘) are supported. Press Esc during capture to cancel." />
-              </div>
-              <div className="settings-ptt-row">
-                <button
-                  className={`settings-ptt-capture${capturing ? ' capturing' : ''}`}
-                  onClick={() => setCapturing(true)}
-                >
-                  {captureBtnLabel()}
-                </button>
-                {settings.pttKey && !capturing && (
+          {/* Display tab */}
+          {activeTab === 'display' && (
+            <div className="settings-group">
+              <div className="settings-section settings-section--row">
+                <div className="settings-section-label">
+                  Hidden Files
+                  <InfoTip tip="Show or hide dotfiles and dotfolders (e.g. .git, .env) in the file tree. Hidden files appear slightly dimmed when shown." />
+                </div>
+                <div className="pill-toggle">
                   <button
-                    className="settings-ptt-clear"
-                    onClick={() => onUpdate({ pttKey: null })}
+                    className={`pill-opt pill-opt--icon${settings.showHiddenFiles ? ' pill-opt--on' : ''}`}
+                    onClick={() => onUpdate({ showHiddenFiles: true })}
+                  ><EyeIcon /> Show</button>
+                  <button
+                    className={`pill-opt pill-opt--icon${!settings.showHiddenFiles ? ' pill-opt--on' : ''}`}
+                    onClick={() => onUpdate({ showHiddenFiles: false })}
+                  ><EyeOffIcon /> Hide</button>
+                </div>
+              </div>
+
+              <div className="settings-section settings-section--row">
+                <div className="settings-section-label">
+                  Sidebar Tabs
+                  <InfoTip tip="Horizontal: tabs appear as a row at the top of the sidebar. Vertical: tabs appear as a compact icon strip on the left edge of the sidebar." />
+                </div>
+                <div className="pill-toggle">
+                  <button
+                    className={`pill-opt${settings.sidebarTabsOrientation === 'horizontal' ? ' pill-opt--on' : ''}`}
+                    onClick={() => onUpdate({ sidebarTabsOrientation: 'horizontal' })}
+                  >Horizontal</button>
+                  <button
+                    className={`pill-opt${settings.sidebarTabsOrientation === 'vertical' ? ' pill-opt--on' : ''}`}
+                    onClick={() => onUpdate({ sidebarTabsOrientation: 'vertical' })}
+                  >Vertical</button>
+                </div>
+              </div>
+
+              <div className="settings-section settings-section--row">
+                <div className="settings-section-label">
+                  Type Icons
+                  <InfoTip tip="File type badges shown next to each file in the explorer. Choose a size or hide them entirely." />
+                </div>
+                <div className="pill-toggle pill-toggle--4">
+                  {([14, 11, 9, 'none'] as TypeIndicatorSize[]).map(val => (
+                    <button
+                      key={String(val)}
+                      className={`pill-opt${settings.typeIndicatorSize === val ? ' pill-opt--on' : ''}`}
+                      onClick={() => onUpdate({ typeIndicatorSize: val })}
+                    >{val === 'none' ? 'None' : val}</button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Audio tab */}
+          {activeTab === 'audio' && (
+            <div className="settings-group">
+              <div className="settings-section settings-section--row">
+                <div className="settings-section-label">
+                  Recording Mode
+                  <InfoTip tip="Toggle: click once to start recording, click again to stop. Hold: press and hold the button or shortcut while speaking, release to send." />
+                </div>
+                <div className="pill-toggle">
+                  <button
+                    className={`pill-opt${settings.recordingMode === 'toggle' ? ' pill-opt--on' : ''}`}
+                    onClick={() => onUpdate({ recordingMode: 'toggle' })}
+                  >Toggle</button>
+                  <button
+                    className={`pill-opt${settings.recordingMode === 'hold' ? ' pill-opt--on' : ''}`}
+                    onClick={() => onUpdate({ recordingMode: 'hold' })}
+                  >Hold</button>
+                </div>
+              </div>
+
+              <div className="settings-section settings-section--row">
+                <div className="settings-section-label">
+                  Push-to-Talk
+                  <InfoTip tip="Keyboard shortcut to trigger recording. Click the key display to set a new combo. Modifier keys (Ctrl, Alt, Shift, ⌘) are supported. Press Esc during capture to cancel." />
+                </div>
+                <div className="settings-ptt-row">
+                  <button
+                    className={`settings-ptt-capture${capturing ? ' capturing' : ''}`}
+                    onClick={() => setCapturing(true)}
                   >
-                    Clear
+                    {captureBtnLabel()}
                   </button>
-                )}
+                  {settings.pttKey && !capturing && (
+                    <button
+                      className="settings-ptt-clear"
+                      onClick={() => onUpdate({ pttKey: null })}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {capturing && (
+                <div className="settings-capture-hint">Hold modifiers + press a key — Esc to cancel</div>
+              )}
+            </div>
+          )}
+
+          {/* Agent & Tools tab */}
+          {activeTab === 'agent' && (<>
+            <div className="settings-group">
+              <div className="settings-section">
+                <div className="settings-section-label">
+                  Command
+                  <InfoTip tip="Executable on your $PATH that will be spawned in the terminal. Installed agent CLIs appear as suggestions." />
+                </div>
+                <AgentCommandInput
+                  value={agentDraft.command}
+                  onChange={cmd => setAgentDraft(d => ({ ...d, command: cmd }))}
+                  onBlur={() => commitAgent(agentDraft)}
+                />
+              </div>
+
+              <div className="settings-section">
+                <div className="settings-section-label">
+                  Args
+                  <InfoTip tip="Extra CLI flags passed on every launch, space-separated. Example: --model opus --no-auto-accept" />
+                </div>
+                <input
+                  className="settings-text-input"
+                  type="text"
+                  value={agentDraft.args}
+                  placeholder="e.g. --model opus"
+                  onChange={e => setAgentDraft(d => ({ ...d, args: e.target.value }))}
+                  onBlur={() => commitAgent(agentDraft)}
+                />
+              </div>
+
+              <div className="settings-section">
+                <div className="settings-section-label">
+                  Label
+                  <InfoTip tip="Display name shown in the UI header." />
+                </div>
+                <input
+                  className="settings-text-input"
+                  type="text"
+                  value={agentDraft.label}
+                  placeholder={DEFAULT_AGENT.label}
+                  onChange={e => setAgentDraft(d => ({ ...d, label: e.target.value }))}
+                  onBlur={() => commitAgent(agentDraft)}
+                />
+              </div>
+
+              <div className="settings-section-desc" style={{ marginBottom: 0 }}>
+                Changes take effect on the next session start. Current session keeps its agent.
               </div>
             </div>
 
-            {capturing && (
-              <div className="settings-capture-hint">Hold modifiers + press a key — Esc to cancel</div>
-            )}
-          </div>
-
-          {/* Agent group */}
-          <div className="settings-group">
-            <div className="settings-group-label">Agent</div>
-
-            <div className="settings-section">
-              <div className="settings-section-label">
-                Command
-                <InfoTip tip="Executable on your $PATH that will be spawned in the terminal. Installed agent CLIs appear as suggestions." />
+            <div className="settings-info-card">
+              <div className="settings-section-label" style={{ marginBottom: 6 }}>GSD Roadmap</div>
+              <div className="settings-section-desc" style={{ marginBottom: 0 }}>
+                The <span className="gsd-highlight-cmd">GSD Roadmap</span> tab shows a live project map when your folder contains a <span className="gsd-highlight-path">.planning/</span> directory generated by the GSD workflow. To initialize, open the terminal in that folder and run <span className="gsd-highlight-cmd">/gsd:new-project</span> in Claude Code.
               </div>
-              <AgentCommandInput
-                value={agentDraft.command}
-                onChange={cmd => setAgentDraft(d => ({ ...d, command: cmd }))}
-                onBlur={() => commitAgent(agentDraft)}
-              />
             </div>
-
-            <div className="settings-section">
-              <div className="settings-section-label">
-                Args
-                <InfoTip tip="Extra CLI flags passed on every launch, space-separated. Example: --model opus --no-auto-accept" />
-              </div>
-              <input
-                className="settings-text-input"
-                type="text"
-                value={agentDraft.args}
-                placeholder="e.g. --model opus"
-                onChange={e => setAgentDraft(d => ({ ...d, args: e.target.value }))}
-                onBlur={() => commitAgent(agentDraft)}
-              />
-            </div>
-
-            <div className="settings-section">
-              <div className="settings-section-label">
-                Label
-                <InfoTip tip="Display name shown in the UI header." />
-              </div>
-              <input
-                className="settings-text-input"
-                type="text"
-                value={agentDraft.label}
-                placeholder={DEFAULT_AGENT.label}
-                onChange={e => setAgentDraft(d => ({ ...d, label: e.target.value }))}
-                onBlur={() => commitAgent(agentDraft)}
-              />
-            </div>
-
-            <div className="settings-section-desc" style={{ marginBottom: 0 }}>
-              Changes take effect on the next session start. Current session keeps its agent.
-            </div>
-          </div>
-
-          {/* GSD Roadmap info card */}
-          <div className="settings-info-card">
-            <div className="settings-section-label" style={{ marginBottom: 6 }}>GSD Roadmap</div>
-            <div className="settings-section-desc" style={{ marginBottom: 0 }}>
-              The <span className="gsd-highlight-cmd">GSD Roadmap</span> tab shows a live project map when your folder contains a <span className="gsd-highlight-path">.planning/</span> directory generated by the GSD workflow. To initialize, open the terminal in that folder and run <span className="gsd-highlight-cmd">/gsd:new-project</span> in Claude Code.
-            </div>
-          </div>
+          </>)}
 
         </div>
 

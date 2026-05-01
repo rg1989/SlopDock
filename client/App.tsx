@@ -228,7 +228,13 @@ export default function App() {
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
-    <div className="app">
+    <div
+      className="app"
+      style={settings.typeIndicatorSize === 'none'
+        ? { '--type-indicator-size': '0px', '--type-indicator-display': 'none' } as React.CSSProperties
+        : { '--type-indicator-size': `${settings.typeIndicatorSize}px`, '--type-indicator-display': 'inline-flex' } as React.CSSProperties
+      }
+    >
       <div className="folder-bar">
         <FolderPicker
           cwd={cwd}
