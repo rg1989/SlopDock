@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Foundation ✅ SHIPPED 2026-05-02
 status: completed
-stopped_at: Completed 11-03-PLAN.md
-last_updated: "2026-05-02T20:02:22.559Z"
+stopped_at: Completed 11-01-PLAN.md
+last_updated: "2026-05-02T20:03:39.983Z"
 last_activity: "2026-04-30 - Completed quick task 1: add syntax colors and edit mode to file preview panel"
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 7
-  completed_plans: 4
+  completed_plans: 5
   percent: 100
 ---
 
@@ -79,6 +79,7 @@ Progress: [██████████] 100% (All Phases)
 | Phase 10-pty-session-persistence P03 | 2min | 1 tasks | 1 files |
 | Phase 10-pty-session-persistence P03 | 2min | 2 tasks | 1 files |
 | Phase 11-canvas-panel-extraction P03 | 2min | 1 tasks | 1 files |
+| Phase 11-canvas-panel-extraction P01 | 2min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -153,6 +154,8 @@ Recent decisions affecting current work:
 - [Phase 10-03]: Defined @keyframes pulse inline since no generic pulse keyframe existed in App.css
 - [Phase 11-03]: No font-family declarations in canvas CSS — global * rule in App.css handles inheritance per CLAUDE.md
 - [Phase 11-03]: canvas-column .live-canvas-panel override not needed — .live-canvas-panel already has flex:1 and overflow:hidden
+- [Phase 11-canvas-panel-extraction]: Mock all child components in App tests so App renders without xterm/PTY/WebSocket dependencies in jsdom
+- [Phase 11-canvas-panel-extraction]: CANVAS-02 passes at Wave 0 (canvas-column not yet implemented); RED requirement applies to overall test set
 
 ### Roadmap Evolution
 
@@ -177,6 +180,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-02T20:02:22.557Z
-Stopped at: Completed 11-03-PLAN.md
+Last session: 2026-05-02T20:03:35.553Z
+Stopped at: Completed 11-01-PLAN.md
 Resume file: None
