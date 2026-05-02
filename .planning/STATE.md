@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Foundation ✅ SHIPPED 2026-05-02
 status: completed
-stopped_at: Completed 11-02-PLAN.md
-last_updated: "2026-05-02T20:06:05.781Z"
+stopped_at: "Checkpoint: 11-04 Task 2 human-verify"
+last_updated: "2026-05-02T20:09:32.970Z"
 last_activity: "2026-04-30 - Completed quick task 1: add syntax colors and edit mode to file preview panel"
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 7
-  completed_plans: 6
+  completed_plans: 7
   percent: 100
 ---
 
@@ -159,6 +159,8 @@ Recent decisions affecting current work:
 - [Phase 11-canvas-panel-extraction]: CANVAS-02 passes at Wave 0 (canvas-column not yet implemented); RED requirement applies to overall test set
 - [Phase 11-02]: Canvas column state initialized from localStorage before render — no flash of wrong state on mount
 - [Phase 11-02]: toggleCanvas uses functional setIsCanvasVisible updater to write localStorage — avoids stale closure
+- [Phase 11-canvas-panel-extraction]: Canvas toggle button always rendered when prop is provided (not gated on visibility) so user can always re-open canvas panel
+- [Phase 11-canvas-panel-extraction]: CANVAS-05 test fixed: waitFor updated to wait for canvas-column element directly, not app-body which resolves before cwd is set
 
 ### Roadmap Evolution
 
@@ -183,6 +185,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-02T20:06:05.779Z
-Stopped at: Completed 11-02-PLAN.md
+Last session: 2026-05-02T20:09:27.944Z
+Stopped at: Checkpoint: 11-04 Task 2 human-verify
 Resume file: None
