@@ -53,7 +53,7 @@ Plans:
 
 **Depends on:** Phase 11
 **Requirements:** BPANEL-01, BPANEL-02, BPANEL-03, BPANEL-04, BPANEL-05
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] 12-01-PLAN.md — Wave 0 RED test stubs + App.tsx state/hooks/JSX + App.css styles (BPANEL-01..05)
@@ -76,5 +76,5 @@ Plans:
 | 1–9. v1.0 Foundation | 25/25 | ✅ Complete | 2026-05-02 |
 | 10. PTY Session Persistence | 3/3 | Complete    | 2026-05-02 |
 | 11. Canvas Panel Extraction | 4/4 | Complete    | 2026-05-02 |
-| 12. Bottom Panel Shell | 1/2 | In Progress|  |
+| 12. Bottom Panel Shell | 2/2 | Complete   | 2026-05-02 |
 | 13. Raw Terminal Sessions | 0/? | Planned | — |
