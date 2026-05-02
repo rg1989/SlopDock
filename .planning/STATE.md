@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Foundation ✅ SHIPPED 2026-05-02
 status: completed
-stopped_at: "Completed 11-04 additional fix: min center panel width enforcement during canvas resize"
-last_updated: "2026-05-02T20:41:28.300Z"
+stopped_at: "Completed 12-01-PLAN.md: bottom panel shell"
+last_updated: "2026-05-02T21:15:47.805Z"
 last_activity: "2026-04-30 - Completed quick task 1: add syntax colors and edit mode to file preview panel"
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 7
-  completed_plans: 7
+  total_plans: 9
+  completed_plans: 8
   percent: 100
 ---
 
@@ -81,6 +81,7 @@ Progress: [██████████] 100% (All Phases)
 | Phase 11-canvas-panel-extraction P03 | 2min | 1 tasks | 1 files |
 | Phase 11-canvas-panel-extraction P01 | 2min | 2 tasks | 2 files |
 | Phase 11-canvas-panel-extraction P02 | 4min | 2 tasks | 1 files |
+| Phase 12-bottom-panel-shell P01 | 4min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -163,6 +164,8 @@ Recent decisions affecting current work:
 - [Phase 11-canvas-panel-extraction]: CANVAS-05 test fixed: waitFor updated to wait for canvas-column element directly, not app-body which resolves before cwd is set
 - [Phase 11-canvas-panel-extraction]: Canvas max-width formula set to 70% of viewport width, independent of sidebar; canvas init width clamped to max on startup; fp-canvas-btn given border + white default + orange hover
 - [Phase 11-04-fix]: canvasMaxRef updated to innerWidth - sidebarWidth - CANVAS_MIN_CENTER(280) - handle; .main-area gets min-width: 280px as CSS hard floor — prevents center panel from shrinking to zero
+- [Phase 12-01]: useDragResize mock passes through initialWidth so BPANEL-05 height restoration test reflects localStorage value
+- [Phase 12-01]: bottom-panel-tab-bar rendered unconditionally inside .main-area using existing flex-direction:column layout
 
 ### Roadmap Evolution
 
@@ -187,6 +190,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-02T20:23:35.158Z
-Stopped at: Completed 11-04 additional fix: min center panel width enforcement during canvas resize
+Last session: 2026-05-02T21:15:47.802Z
+Stopped at: Completed 12-01-PLAN.md: bottom panel shell
 Resume file: None
