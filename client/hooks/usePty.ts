@@ -20,6 +20,8 @@ export interface UsePtyOptions {
   onExit?: (code: number) => void;
   /** Override WebSocket URL — defaults to ws[s]://<same-host>/ws */
   wsUrl?: string;
+  /** Send a kill message to the server before closing the WebSocket on unmount */
+  killOnUnmount?: boolean;
 }
 
 export interface UsePtyReturn {
@@ -34,7 +36,7 @@ function deriveWsUrl(override?: string): string {
   return `${proto}://${window.location.host}/ws`;
 }
 
-export function usePty({ cwd, terminal, cols, rows, agentConfig, onData, sessionId, onStatus, onExit, wsUrl }: UsePtyOptions): UsePtyReturn {
+export function usePty({ cwd, terminal, cols, rows, agentConfig, onData, sessionId, onStatus, onExit, wsUrl, killOnUnmount }: UsePtyOptions): UsePtyReturn {
   const wsRef = useRef<WebSocket | null>(null);
   const [connected, setConnected] = useState(false);
   const [reconnectKey, setReconnectKey] = useState(0);
@@ -117,6 +119,9 @@ export function usePty({ cwd, terminal, cols, rows, agentConfig, onData, session
       if (workingTimerRef.current) {
         clearTimeout(workingTimerRef.current);
         workingTimerRef.current = null;
+      }
+      if (killOnUnmount && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'kill' }));
       }
       ws.close();
       wsRef.current = null;

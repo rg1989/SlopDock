@@ -32,6 +32,7 @@ export function RawTerminalPane({ sessionId, cwd, isActive, onStatus }: RawTermi
     agentConfig: { command: 'bash', args: [], label: 'shell' },
     sessionId,
     onStatus,
+    killOnUnmount: true,
   });
 
   return (
