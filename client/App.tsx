@@ -167,9 +167,11 @@ export default function App() {
   const [isCanvasVisible, setIsCanvasVisible] = useState<boolean>(() =>
     uiRead<boolean>(UI.canvasVisible, true)
   );
-  const [canvasInitWidth] = useState(() =>
-    Math.max(CANVAS_MIN, Math.min(Math.floor(window.innerWidth / 3), uiRead(UI.canvasWidth, CANVAS_DEFAULT_WIDTH)))
-  );
+  const [canvasInitWidth] = useState(() => {
+    const stored = uiRead(UI.canvasWidth, CANVAS_DEFAULT_WIDTH);
+    const max = Math.floor(window.innerWidth * 0.7);
+    return Math.max(CANVAS_MIN, Math.min(max, stored));
+  });
   const canvasMaxRef = useRef<number>(Infinity);
   const canvas = useDragResize(canvasInitWidth, CANVAS_MIN, 'right', canvasMaxRef);
 
@@ -249,10 +251,7 @@ export default function App() {
   // ── Layout max-width refs (updated every render) ─────────────────────────────
   sidebarMaxRef.current = window.innerWidth - 300 - RESIZE_HANDLE_WIDTH;
   editorMaxRef.current = window.innerWidth - (cwd ? sidebar.width + RESIZE_HANDLE_WIDTH : 0) - 300;
-  canvasMaxRef.current = window.innerWidth
-    - (cwd ? sidebar.width + RESIZE_HANDLE_WIDTH : 0)
-    - 300
-    - (activeTabs.length > 0 ? editor.width + RESIZE_HANDLE_WIDTH : 0);
+  canvasMaxRef.current = Math.floor(window.innerWidth * 0.7);
 
   // Guard against React StrictMode double-invoking the initial spawn effect
   const initialSpawnedRef = useRef(false);
