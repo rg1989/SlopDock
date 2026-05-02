@@ -64,8 +64,13 @@ Plans:
 **Goal:** Populate the bottom panel with plain PTY terminal sessions — no Claude agent, just a raw shell. Supports multiple tabs with add/close, each tab is an independent PTY process. Reuses existing usePty infrastructure.
 
 **Depends on:** Phase 12
-**Requirements:** TBD
-**Plans:** TBD — pending /gsd:plan-phase
+**Requirements:** RAWTERM-01, RAWTERM-02, RAWTERM-03, RAWTERM-04, RAWTERM-05, RAWTERM-06
+**Plans:** 3 plans
+
+Plans:
+- [ ] 13-01-PLAN.md — Wave 0 RED test stubs (RAWTERM-01..06) + useRawSessionManager hook
+- [ ] 13-02-PLAN.md — RawTerminalPane component + App.tsx wiring (tab bar, auto-seed, body)
+- [ ] 13-03-PLAN.md — CSS for tab chips/add button + human visual verify
 
 ---
 
@@ -77,4 +82,4 @@ Plans:
 | 10. PTY Session Persistence | 3/3 | Complete    | 2026-05-02 |
 | 11. Canvas Panel Extraction | 4/4 | Complete    | 2026-05-02 |
 | 12. Bottom Panel Shell | 2/2 | Complete    | 2026-05-02 |
-| 13. Raw Terminal Sessions | 0/? | Planned | — |
+| 13. Raw Terminal Sessions | 0/3 | Planned | — |
