@@ -62,7 +62,6 @@ vi.mock('../client/hooks/useProjectHealth', () => ({
 const mockAdd = vi.fn();
 
 vi.mock('../client/hooks/useRawSessionManager', () => ({
-  // @ts-expect-error — module does not exist yet (Wave 0 RED)
   useRawSessionManager: () => ({
     sessions: [],
     activeId: null,
