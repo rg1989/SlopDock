@@ -47,6 +47,7 @@ interface SessionPaneProps {
   onTtsData?: (raw: string) => void;
   /** Called when active — lets App route sidebar and audio actions to this pane */
   onRegisterActions?: (actions: SessionPaneActions) => void;
+  accentHex?: string;
 }
 
 function extractSessionName(raw: string): string {
@@ -67,6 +68,7 @@ export function SessionPane({
   ttsEnabled,
   onTtsData,
   onRegisterActions,
+  accentHex,
 }: SessionPaneProps) {
   const [terminal, setTerminal] = useState<XTerminal | null>(null);
   const hasNamedRef = useRef(false);
@@ -136,7 +138,7 @@ export function SessionPane({
     <div style={{ display: isActive ? 'flex' : 'none', flex: 1, minHeight: 0, overflow: 'hidden' }}>
       <div style={{ display: 'flex', flex: 1, flexDirection: 'column', minHeight: 0, minWidth: 0 }}>
         <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
-          <TerminalComponent onReady={handleReady} sendResize={handleSendResize} visibleKey={visibleKey} />
+          <TerminalComponent onReady={handleReady} sendResize={handleSendResize} visibleKey={visibleKey} accentHex={accentHex} />
         </div>
         <div className="resize-handle--h" onMouseDown={composerPanel.onMouseDown} />
         <div className="composer-bottom" style={{ height: composerPanel.width }}>

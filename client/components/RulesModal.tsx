@@ -90,7 +90,7 @@ export function RulesModal({ cwd, onClose }: RulesModalProps) {
           title={file.path}
         >
           {depth > 0 && <span className="rules-tree-indent-line" />}
-          <RulesIcon size={11} color={isSelected ? '#d4845a' : '#6e7681'} />
+          <RulesIcon size={11} color={isSelected ? 'var(--accent)' : '#6e7681'} />
           <span className="rules-tree-name">{basename(file.displayPath)}</span>
           <ScopeLabel scope={file.scope} />
         </button>
@@ -107,7 +107,7 @@ export function RulesModal({ cwd, onClose }: RulesModalProps) {
 
         <div className="modal-header">
           <div className="rules-modal-title-row">
-            <RulesIcon size={14} color="#d4845a" />
+            <RulesIcon size={14} color="var(--accent)" />
             <span className="modal-title">Rules</span>
             {selected && (
               <span className="rules-modal-path">{selected.displayPath}</span>

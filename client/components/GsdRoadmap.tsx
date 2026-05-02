@@ -118,21 +118,22 @@ const IconLayers = () => (
 );
 
 function statusColor(status: string): string {
-  if (status === 'completed') return '#d4845a';
-  if (status === 'in-progress') return '#d4845a';
+  if (status === 'completed') return 'var(--accent)';
+  if (status === 'in-progress') return 'var(--accent)';
   return '#484f58';
 }
 
 function phaseStatusLabel(phase: GsdPhase): string {
   if (phase.completed) return 'Complete';
+  if (phase.plans.length === 0) return 'Not planned';
   const done = phase.plans.filter(p => p.completed).length;
   if (done > 0) return `${done}/${phase.plans.length} plans done`;
   return 'Planned';
 }
 
 function phaseColor(phase: GsdPhase, isActive: boolean): string {
-  if (phase.completed) return '#d4845a';
-  if (isActive) return '#d4845a';
+  if (phase.completed) return 'var(--accent)';
+  if (isActive) return 'var(--accent)';
   return '#484f58';
 }
 
@@ -377,7 +378,7 @@ export const GsdRoadmap: FC<GsdRoadmapProps> = ({ cwd, onOpenFile, activeFilePat
           <div className="rm-quick-header">
             <IconBolt />
             <span>Quick Tasks</span>
-            <span className="rm-quick-count" style={{ color: pendingQuickTasks.length > 0 ? '#d4845a' : '#484f58' }}>
+            <span className="rm-quick-count" style={{ color: pendingQuickTasks.length > 0 ? 'var(--accent)' : '#484f58' }}>
               {pendingQuickTasks.length > 0 ? `${pendingQuickTasks.length} pending` : 'all done'}
             </span>
           </div>
@@ -480,7 +481,7 @@ export const GsdRoadmap: FC<GsdRoadmapProps> = ({ cwd, onOpenFile, activeFilePat
                     <div className="rm-phase-body">
                       <div className="rm-phase-top">
                         <span className="rm-phase-num" style={{ color: pc }}>Phase {phase.number}</span>
-                        {isActive && <span className="rm-active-badge">In progress</span>}
+                        {isActive && <span className="rm-active-badge">{phase.plans.length === 0 ? 'Next up' : 'In progress'}</span>}
                         <span className="rm-phase-chevron"><IconChevron open={isOpen} /></span>
                       </div>
                       <div className="rm-phase-name" style={{ color: phase.completed && !isActive ? '#484f58' : undefined }}>

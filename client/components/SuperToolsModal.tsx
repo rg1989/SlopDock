@@ -276,7 +276,7 @@ export function SuperToolsModal({ cwd, onClose, onRunDirect, onRunWithGsd }: Sup
 
         <div className="modal-header">
           <div className="st-modal-title-row">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d4845a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
             </svg>
             <span className="modal-title">Super Tools</span>

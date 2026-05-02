@@ -1191,6 +1191,38 @@ app.put('/api/slop-guardian', async (req, res) => {
   }
 });
 
+app.get('/api/slop-accent', async (req, res) => {
+  const { cwd } = req.query as { cwd?: string };
+  if (!cwd) { res.status(400).json({ error: 'cwd required' }); return; }
+  const configFile = path.join(path.resolve(cwd), '.slop', 'config.json');
+  try {
+    const raw = await readFile(configFile, 'utf-8');
+    const config = JSON.parse(raw);
+    res.json({ accentColor: config.accentColor ?? null });
+  } catch {
+    res.json({ accentColor: null });
+  }
+});
+
+app.put('/api/slop-accent', async (req, res) => {
+  const { cwd, accentColor } = req.body as { cwd?: string; accentColor?: string | null };
+  if (!cwd) { res.status(400).json({ error: 'cwd required' }); return; }
+  const configFile = path.join(path.resolve(cwd), '.slop', 'config.json');
+  try {
+    const raw = await readFile(configFile, 'utf-8');
+    const config = JSON.parse(raw);
+    if (accentColor) {
+      config.accentColor = accentColor;
+    } else {
+      delete config.accentColor;
+    }
+    await atomicWrite(configFile, JSON.stringify(config, null, 2));
+    res.json({ ok: true, accentColor: config.accentColor ?? null });
+  } catch {
+    res.status(404).json({ error: 'no .slop/config.json found' });
+  }
+});
+
 app.get('/api/global-settings', async (_req, res) => {
   try {
     const raw = await readFile(SETTINGS_FILE, 'utf-8');

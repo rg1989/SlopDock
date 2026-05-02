@@ -9,12 +9,13 @@ interface LiveCanvasPayload {
 
 interface LiveCanvasPanelProps {
   cwd: string;
+  isDragging?: boolean;
 }
 
 /** Sandboxed iframe: scripts run for charts/DOM viz but cannot reach the SlopMop parent app. */
 const IFRAME_SANDBOX = 'allow-scripts allow-forms';
 
-export const LiveCanvasPanel: FC<LiveCanvasPanelProps> = ({ cwd }) => {
+export const LiveCanvasPanel: FC<LiveCanvasPanelProps> = ({ cwd, isDragging }) => {
   const [payload, setPayload] = useState<LiveCanvasPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -91,6 +92,7 @@ export const LiveCanvasPanel: FC<LiveCanvasPanelProps> = ({ cwd }) => {
             className="live-canvas-iframe"
             sandbox={IFRAME_SANDBOX}
             srcDoc={payload!.html!}
+            style={isDragging ? { pointerEvents: 'none' } : undefined}
           />
         </div>
       ) : null}

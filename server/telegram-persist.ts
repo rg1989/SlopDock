@@ -99,6 +99,31 @@ export async function saveTelegramPublicConfig(body: {
   await atomicWrite(TELEGRAM_CONFIG_PATH, json);
 }
 
+export const TELEGRAM_SESSIONS_PATH = path.join(os.homedir(), '.slop', 'telegram-sessions.json');
+
+export async function loadChatSessions(): Promise<Map<number, string>> {
+  try {
+    const raw = await readFile(TELEGRAM_SESSIONS_PATH, 'utf-8');
+    const obj = JSON.parse(raw) as Record<string, string>;
+    const map = new Map<number, string>();
+    for (const [k, v] of Object.entries(obj)) {
+      const id = Number(k);
+      if (Number.isFinite(id) && id > 0 && typeof v === 'string' && v) map.set(id, v);
+    }
+    return map;
+  } catch {
+    return new Map();
+  }
+}
+
+export async function saveChatSession(chatId: number, projectPath: string): Promise<void> {
+  const existing = await loadChatSessions();
+  existing.set(chatId, projectPath);
+  const obj = Object.fromEntries([...existing.entries()].map(([k, v]) => [String(k), v]));
+  await mkdir(path.dirname(TELEGRAM_SESSIONS_PATH), { recursive: true });
+  await atomicWrite(TELEGRAM_SESSIONS_PATH, JSON.stringify(obj, null, 2));
+}
+
 /** Persist token to disk (ignored at runtime if TELEGRAM_BOT_TOKEN is set). Pass null/empty to clear file token. */
 export async function saveTelegramBotToken(token: string | null | undefined): Promise<void> {
   await mkdir(path.dirname(TELEGRAM_SECRETS_PATH), { recursive: true });

@@ -27,6 +27,7 @@ import type { SuperTool } from './components/SuperToolsModal';
 import { RulesModal } from './components/RulesModal';
 import { OnboardingModal } from './components/OnboardingModal';
 import { useProjectHealth } from './hooks/useProjectHealth';
+import { useAccentColor } from './hooks/useAccentColor';
 import { HealthStatusBar } from './components/HealthStatusBar';
 import { useRawSessionManager } from './hooks/useRawSessionManager';
 import { RawTerminalPane } from './components/RawTerminalPane';
@@ -165,6 +166,7 @@ export default function App() {
 
   const { settings, update: updateSettings } = useSettings();
   const health = useProjectHealth(cwd, settings.agent.command);
+  const { hex: accentHex } = useAccentColor(cwd);
 
   // Drag-resize — restore persisted widths as initial values
   const sidebarMaxRef = useRef<number>(Infinity);
@@ -585,6 +587,7 @@ export default function App() {
                 ttsEnabled={ttsEnabled}
                 onTtsData={audio.tts.handleData}
                 brainRefreshTrigger={() => setBrainRefreshKey(k => k + 1)}
+                accentHex={accentHex}
                 onRegisterActions={(actions) => {
                   if (s.id === sessionManager.activeId) {
                     activeActionsRef.current = actions;

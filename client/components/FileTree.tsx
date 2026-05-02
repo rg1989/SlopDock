@@ -61,8 +61,8 @@ function FolderIcon({ open }: { open: boolean }) {
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, marginRight: 4, verticalAlign: 'middle' }}>
       {open ? (
         <>
-          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" fill="rgba(212,132,90,0.2)" stroke="#d4845a" strokeWidth="1.5"/>
-          <line x1="2" y1="11" x2="22" y2="11" stroke="#d4845a" strokeWidth="1.5"/>
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" style={{ fill: 'rgba(var(--accent-rgb), 0.2)', stroke: 'var(--accent)' }} strokeWidth="1.5"/>
+          <line x1="2" y1="11" x2="22" y2="11" style={{ stroke: 'var(--accent)' }} strokeWidth="1.5"/>
         </>
       ) : (
         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" stroke="#8b949e" strokeWidth="1.5" fill="none"/>

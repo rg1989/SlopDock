@@ -7,9 +7,9 @@ import { promisify } from 'util';
 import { spawnSession } from './pty-manager.js';
 import { registry } from './session-registry.js';
 import { loadTelegramConfig } from './telegram-config.js';
-import { resolveProjectFolderName, shellSingleQuotedPath } from './project-resolve.js';
+import { resolveProjectFolderName, listAllProjects, shellSingleQuotedPath } from './project-resolve.js';
 import type { ServerMessage } from '../shared/protocol.js';
-import { getTelegramBotToken, TELEGRAM_CONFIG_PATH } from './telegram-persist.js';
+import { getTelegramBotToken, TELEGRAM_CONFIG_PATH, loadChatSessions, saveChatSession } from './telegram-persist.js';
 import { transcribe, getWhisperStatus, checkWhisper } from './whisper-stt.js';
 import { fetchTelegramFileBuffer, saveTelegramFileToInbound } from './telegram-media.js';
 import { chunkTextForTelegram } from './telegram-chunk.js';
@@ -30,7 +30,7 @@ let botInstance: Bot<Context> | null = null;
 type ChatState = { lastProjectPath: string | null };
 const chatState = new Map<number, ChatState>();
 
-type FlushState = { timer: ReturnType<typeof setTimeout> | null; buf: string };
+type FlushState = { timer: ReturnType<typeof setTimeout> | null; buf: string; suppressUntil: number };
 const outputFlush = new Map<string, FlushState>();
 
 const inboundChain = new Map<number, Promise<void>>();
@@ -116,9 +116,54 @@ function scheduleAlbumItem(
 
 function stripAnsi(s: string): string {
   return s
-    .replace(/\x1b\[[0-9;:]*[ -/]*[@-~]/g, '')
-    .replace(/\x1b\][0-9;]*(?:\x07|\x1b\\)/g, '')
-    .replace(/\x1b[@-Z\\-_]/g, '');
+    .replace(/\x1b\][\s\S]*?(?:\x07|\x1b\\)/g, '')   // OSC sequences (terminal titles, etc.)
+    .replace(/\x1b\[[\x30-\x3f]*[\x20-\x2f]*[\x40-\x7e]/g, '') // CSI sequences (includes ?2026l, private modes)
+    .replace(/\x1b[@-Z\\-_]/g, '');                    // other single-char ESC sequences
+}
+
+/** Simulate terminal line overwriting: \r without following \n resets the current line. */
+function resolveCarriageReturns(s: string): string {
+  const out: string[] = [];
+  let line = '';
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i]!;
+    if (ch === '\n') {
+      out.push(line);
+      line = '';
+    } else if (ch === '\r' && s[i + 1] !== '\n') {
+      line = '';
+    } else {
+      line += ch;
+    }
+  }
+  if (line) out.push(line);
+  return out.join('\n');
+}
+
+/** Strip Claude Code UI chrome: spinners, status lines, progress bars, prompts. */
+function filterClaudeStatusLines(s: string): string {
+  const kept: string[] = [];
+  for (const raw of s.split('\n')) {
+    const t = raw.trim();
+    if (!t) continue;
+    // Braille spinner / pure-symbol lines (animation frames)
+    if (/^[⠀-⣿\s✢✳✶✻✽·❯─▶⏺]+$/.test(t)) continue;
+    // Claude Code status phrases (short lines only — avoid filtering real content)
+    if (t.length < 120 && /Deliberating|thinking with|running stop hooks|stop hooks|\.\.\.$/.test(t)) continue;
+    // Token / timing counters  e.g. "↓ 51 tokens · 5s"
+    if (/^[↑↓]\s*\d/.test(t)) continue;
+    // Progress bars  e.g. "█░░░░░░░░░ 13%"
+    if (/^[█░▓▒▌▍▎▏\s]+(\d+%)?$/.test(t)) continue;
+    // Status bar line  e.g. "⬆/gsd:update │Sonnet4.6│…"
+    if (/^⬆.*│/.test(t)) continue;
+    // Idle prompt line
+    if (/^❯\s*$/.test(t)) continue;
+    // Divider lines
+    if (/^─{4,}/.test(t)) continue;
+    // Strip ⏺ response-marker prefix but keep the content that follows
+    kept.push(t.replace(/^⏺\s*/, ''));
+  }
+  return kept.join('\n').trim();
 }
 
 function clearOutputFlush(sessionId: string): void {
@@ -127,19 +172,29 @@ function clearOutputFlush(sessionId: string): void {
   outputFlush.delete(sessionId);
 }
 
+function suppressTelegramOutput(sessionId: string, durationMs: number): void {
+  let st = outputFlush.get(sessionId);
+  if (!st) {
+    st = { timer: null, buf: '', suppressUntil: 0 };
+    outputFlush.set(sessionId, st);
+  }
+  st.suppressUntil = Date.now() + durationMs;
+}
+
 function scheduleTelegramOutput(sessionId: string, chatId: number, api: Bot<Context>['api'], chunk: string): void {
   let st = outputFlush.get(sessionId);
   if (!st) {
-    st = { timer: null, buf: '' };
+    st = { timer: null, buf: '', suppressUntil: 0 };
     outputFlush.set(sessionId, st);
   }
+  if (Date.now() < st.suppressUntil) return;
   st.buf += chunk;
   if (st.timer) clearTimeout(st.timer);
   st.timer = setTimeout(() => {
     const raw = st!.buf;
     st!.buf = '';
     st!.timer = null;
-    const text = stripAnsi(raw).trimEnd();
+    const text = filterClaudeStatusLines(resolveCarriageReturns(stripAnsi(raw)));
     if (!text) return;
     const parts = chunkTextForTelegram(text, TELEGRAM_CHUNK);
     void (async () => {
@@ -195,6 +250,22 @@ async function whichCmd(cmd: string): Promise<string | null> {
 
 function sessionIdForChat(chatId: number): string {
   return `${SESSION_PREFIX}${chatId}`;
+}
+
+/**
+ * Translate Telegram-safe command names (underscores) back to Claude Code names (hyphens/colons).
+ * Only applies when the message is a bare slash command (no spaces, no other content).
+ * e.g. "/security_review" → "/security-review", "/full_feature" → "/full-feature"
+ */
+function translateTelegramCommand(text: string): string {
+  const bare = text.trim();
+  if (!bare.startsWith('/')) return bare;
+  // Only translate if it looks like a bare command (no spaces → no args)
+  const [cmd, ...rest] = bare.split(' ');
+  if (!cmd) return bare;
+  const translated = cmd.replace(/^\//, '').replace(/_/g, '-');
+  const parts = rest.length ? [translated, ...rest] : [translated];
+  return '/' + parts.join(' ');
 }
 
 /** Parse leading `PROJECT=name` or `PROJECT: name` line; remainder is body. */
@@ -270,6 +341,7 @@ async function ensureSession(
     });
 
     const q = shellSingleQuotedPath(st.lastProjectPath);
+    suppressTelegramOutput(sid, 3000); // suppress echo of cd + terminal init sequences
     ptyProcess.write(`cd ${q}\r`);
 
     return { ok: true };
@@ -300,6 +372,7 @@ async function deliverTelegramTurn(
     const st = chatState.get(chatId) ?? { lastProjectPath: null };
     st.lastProjectPath = cwdPath;
     chatState.set(chatId, st);
+    void saveChatSession(chatId, cwdPath).catch((e) => console.error('[telegram] saveChatSession:', e));
   }
 
   const prep = await ensureSession(chatId, cfgLatest, ctx.api);
@@ -316,10 +389,11 @@ async function deliverTelegramTurn(
   }
 
   if (cwdPath) {
+    suppressTelegramOutput(sid, 1500); // suppress cd echo on project switch
     sess.pty.write(`cd ${shellSingleQuotedPath(cwdPath)}\r`);
   }
 
-  const fullMessage = buildComposerStyleMessage(attachmentPaths, body);
+  const fullMessage = buildComposerStyleMessage(attachmentPaths, translateTelegramCommand(body));
   if (!fullMessage.trim()) {
     if (project && attachmentPaths.length === 0) {
       await ctx.reply('Project set. Send your message, a file, or a voice note next.');
@@ -376,6 +450,15 @@ export async function startTelegramTransport(): Promise<void> {
     console.warn('[telegram] No projectRoots configured — project resolution will fail until ~/.slop/telegram.json is set.');
   }
 
+  // Restore last project per chat from disk so PROJECT= isn't needed after restarts
+  const savedSessions = await loadChatSessions().catch(() => new Map<number, string>());
+  for (const [chatId, projectPath] of savedSessions) {
+    chatState.set(chatId, { lastProjectPath: projectPath });
+  }
+  if (savedSessions.size > 0) {
+    console.log(`[telegram] Restored ${savedSessions.size} chat session(s) from disk.`);
+  }
+
   const bot = new Bot(token);
   botInstance = bot;
 
@@ -387,11 +470,13 @@ export async function startTelegramTransport(): Promise<void> {
       return;
     }
     await ctx.reply(
-      'SlopMop Telegram → Claude CLI (PTY).\n\n' +
-        'Text: PROJECT=name then your message.\n' +
-        'Voice: round messages → Whisper → Claude.\n' +
-        'Files: send photo/document → saved under ~/.slop/telegram-inbound/… → @paths sent like the browser.\n\n' +
-        '/doctor /reset /help',
+      'SlopMop → Claude CLI over Telegram.\n\n' +
+        '/projects — list available projects\n' +
+        '/project — show or switch active project\n' +
+        '/doctor — check setup\n' +
+        '/reset — clear PTY session\n' +
+        '/help — full help\n\n' +
+        'Voice notes are transcribed with Whisper. Photos/documents are saved and passed as @paths.',
     );
   });
 
@@ -400,11 +485,17 @@ export async function startTelegramTransport(): Promise<void> {
     if (!ensurePrivateChat(ctx)) return;
     if (!assertAllowed(ctx, cfg)) return;
     await ctx.reply(
-      'Commands: /doctor · /reset\n\n' +
-        'First PTY in this chat: include PROJECT=folder_name (unique under your roots).\n\n' +
-        'Voice notes use local Whisper (same as browser).\n' +
-        'Photos/documents save to ~/.slop/telegram-inbound/<your-chat-id>/ and are passed as @paths.\n\n' +
-        'Example:\nPROJECT=myrepo\n\nExplain src/foo.ts',
+      'Commands:\n' +
+        '/projects — list SlopMop projects\n' +
+        '/project — show active project\n' +
+        '/project <name> — switch project\n' +
+        '/clear — clear Claude conversation history\n' +
+        '/compact — summarize conversation to save context\n' +
+        '/doctor — check Whisper, agent, token\n' +
+        '/reset — destroy PTY (need /project again after)\n\n' +
+        'Voice notes → Whisper → Claude.\n' +
+        'Photos/documents → ~/.slop/telegram-inbound/<chat-id>/ → passed as @paths.\n\n' +
+        'Example: /project SlopMop then just send messages.',
     );
   });
 
@@ -444,6 +535,36 @@ export async function startTelegramTransport(): Promise<void> {
     registry.destroy(sid);
     chatState.set(chatId, { lastProjectPath: null });
     await ctx.reply('PTY cleared for this chat. Send PROJECT=name again before the next prompt.');
+  });
+
+  bot.command('clear', async (ctx) => {
+    if (!ensurePrivateChat(ctx)) return;
+    const cfg = await loadTelegramConfig(TELEGRAM_CONFIG_PATH);
+    if (!assertAllowed(ctx, cfg)) { await ctx.reply('Not authorized.'); return; }
+    const chatId = ctx.chat!.id;
+    const sid = sessionIdForChat(chatId);
+    const sess = registry.get(sid);
+    if (!sess?.pty || sess.status !== 'alive') {
+      await ctx.reply('No active session. Use /project <name> to start one.');
+      return;
+    }
+    suppressTelegramOutput(sid, 2000);
+    sess.pty.write('\x15/clear\r');
+    await ctx.reply('Conversation history cleared.');
+  });
+
+  bot.command('compact', async (ctx) => {
+    if (!ensurePrivateChat(ctx)) return;
+    const cfg = await loadTelegramConfig(TELEGRAM_CONFIG_PATH);
+    if (!assertAllowed(ctx, cfg)) { await ctx.reply('Not authorized.'); return; }
+    const chatId = ctx.chat!.id;
+    const sid = sessionIdForChat(chatId);
+    const sess = registry.get(sid);
+    if (!sess?.pty || sess.status !== 'alive') {
+      await ctx.reply('No active session. Use /project <name> to start one.');
+      return;
+    }
+    sess.pty.write('\x15/compact\r');
   });
 
   bot.on('message:voice', async (ctx) => {
@@ -589,10 +710,96 @@ export async function startTelegramTransport(): Promise<void> {
     });
   });
 
+  bot.command('projects', async (ctx) => {
+    if (!ensurePrivateChat(ctx)) return;
+    const cfg = await loadTelegramConfig(TELEGRAM_CONFIG_PATH);
+    if (!assertAllowed(ctx, cfg)) { await ctx.reply('Not authorized.'); return; }
+    if (cfg.projectRoots.length === 0) {
+      await ctx.reply('No project roots configured. Add them in SlopMop Settings → Telegram.');
+      return;
+    }
+    const all = await listAllProjects(cfg.projectRoots);
+    if (all.length === 0) {
+      await ctx.reply('No projects found under configured roots:\n' + cfg.projectRoots.join('\n'));
+      return;
+    }
+    const chatId = ctx.chat!.id;
+    const current = chatState.get(chatId)?.lastProjectPath;
+    const lines = all.map((p) => {
+      const active = current && p.absolutePath === current;
+      return (active ? '● ' : '  ') + p.name;
+    });
+    await ctx.reply('Projects:\n\n' + lines.join('\n') + '\n\nUse /project <name> to switch.');
+  });
+
+  bot.command('gsd', async (ctx) => {
+    if (!ensurePrivateChat(ctx)) return;
+    const cfg = await loadTelegramConfig(TELEGRAM_CONFIG_PATH);
+    if (!assertAllowed(ctx, cfg)) { await ctx.reply('Not authorized.'); return; }
+    const sub = ctx.match?.trim();
+    if (!sub) {
+      await ctx.reply(
+        'GSD commands — use /gsd <subcommand>:\n\n' +
+        'progress · execute-phase · plan-phase · verify-work\n' +
+        'resume-work · pause-work · check-todos · add-todo\n' +
+        'quick · debug · new-project · new-milestone\n' +
+        'add-phase · insert-phase · remove-phase\n' +
+        'audit-milestone · complete-milestone\n' +
+        'map-codebase · help · update\n\n' +
+        'Example: /gsd progress',
+      );
+      return;
+    }
+    const chatId = ctx.chat!.id;
+    const sid = sessionIdForChat(chatId);
+    const sess = registry.get(sid);
+    if (!sess?.pty || sess.status !== 'alive') {
+      await ctx.reply('No active session. Use /project <name> first.');
+      return;
+    }
+    sess.pty.write(`/gsd:${sub}\r`);
+  });
+
+  bot.command('project', async (ctx) => {
+    if (!ensurePrivateChat(ctx)) return;
+    const cfg = await loadTelegramConfig(TELEGRAM_CONFIG_PATH);
+    if (!assertAllowed(ctx, cfg)) { await ctx.reply('Not authorized.'); return; }
+    const chatId = ctx.chat!.id;
+    const arg = ctx.match?.trim();
+
+    if (!arg) {
+      const current = chatState.get(chatId)?.lastProjectPath;
+      if (!current) {
+        await ctx.reply('No active project. Use /project <name> to set one, or /projects to list available.');
+      } else {
+        await ctx.reply(`Active project: ${path.basename(current)}\n${current}`);
+      }
+      return;
+    }
+
+    const resolved = await resolveProjectFolderName(arg, cfg.projectRoots, cfg.maxSearchDepth);
+    if (!resolved.ok) {
+      await ctx.reply(resolved.error + '\n\nUse /projects to see what\'s available.');
+      return;
+    }
+    const st = chatState.get(chatId) ?? { lastProjectPath: null };
+    st.lastProjectPath = resolved.absolutePath;
+    chatState.set(chatId, st);
+    void saveChatSession(chatId, resolved.absolutePath).catch((e) => console.error('[telegram] saveChatSession:', e));
+
+    // If session exists, cd into the new project
+    const sid = sessionIdForChat(chatId);
+    const sess = registry.get(sid);
+    if (sess?.pty && sess.status === 'alive') {
+      suppressTelegramOutput(sid, 1500);
+      sess.pty.write(`cd ${shellSingleQuotedPath(resolved.absolutePath)}\r`);
+    }
+
+    await ctx.reply(`Switched to: ${path.basename(resolved.absolutePath)}\n${resolved.absolutePath}\n\nSend your message.`);
+  });
+
   bot.on('message:text', async (ctx) => {
     const text = ctx.message.text ?? '';
-    if (text.startsWith('/')) return;
-
     if (!ensurePrivateChat(ctx)) return;
     const cfg = await loadTelegramConfig(TELEGRAM_CONFIG_PATH);
     if (!assertAllowed(ctx, cfg)) {
@@ -605,6 +812,24 @@ export async function startTelegramTransport(): Promise<void> {
       await deliverTelegramTurn(ctx, chatId, text, []);
     });
   });
+
+  void bot.api.setMyCommands([
+    { command: 'projects',        description: 'List SlopMop projects' },
+    { command: 'project',         description: 'Show or switch active project' },
+    { command: 'clear',           description: 'Clear Claude conversation history' },
+    { command: 'compact',         description: 'Compact/summarize conversation history' },
+    { command: 'doctor',          description: 'Check Whisper, agent, and token status' },
+    { command: 'reset',           description: 'Destroy PTY session for this chat' },
+    { command: 'help',            description: 'Show help' },
+    { command: 'gsd',             description: '/gsd <subcommand> — run any GSD command (e.g. /gsd progress)' },
+    { command: 'review',          description: 'Review current branch / PR' },
+    { command: 'init',            description: 'Initialize CLAUDE.md for the project' },
+    { command: 'tdd',             description: 'Test-driven development loop' },
+    { command: 'diagnose',        description: 'Diagnose a bug or regression' },
+    { command: 'security_review', description: 'Security review of pending changes' },
+    { command: 'full_feature',    description: 'Implement a full feature end-to-end' },
+    { command: 'simplify',        description: 'Review and simplify changed code' },
+  ]).catch((e) => console.error('[telegram] setMyCommands:', e));
 
   void bot.start();
   console.log('[telegram] Long polling started');

@@ -88,7 +88,7 @@ export default function SlashMenu({ items, selectedIndex, onSelect, anchorRect }
         >
           <span
             style={{
-              color: '#d4845a',
+              color: 'var(--accent)',
               fontFamily: 'monospace',
               fontSize: '13px',
               flexShrink: 0,

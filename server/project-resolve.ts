@@ -67,6 +67,41 @@ async function collectDirsNamed(
   }
 }
 
+/**
+ * List immediate subdirectories under each root that contain a .slop folder —
+ * i.e. projects that have actually been set up with SlopMop.
+ */
+export async function listAllProjects(
+  projectRoots: string[],
+): Promise<{ name: string; absolutePath: string }[]> {
+  const seen = new Set<string>();
+  const results: { name: string; absolutePath: string }[] = [];
+  for (const root of projectRoots) {
+    const absRoot = path.resolve(root);
+    let entries: import('fs').Dirent[];
+    try {
+      entries = await readdir(absRoot, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const e of entries) {
+      if (e.name.startsWith('.') || !e.isDirectory()) continue;
+      const full = path.join(absRoot, e.name);
+      if (seen.has(full)) continue;
+      // Only include projects that have a .slop directory
+      try {
+        const slopStat = await stat(path.join(full, '.slop'));
+        if (!slopStat.isDirectory()) continue;
+      } catch {
+        continue;
+      }
+      seen.add(full);
+      results.push({ name: e.name, absolutePath: full });
+    }
+  }
+  return results.sort((a, b) => a.name.localeCompare(b.name));
+}
+
 /** Escape a path for use inside single quotes in sh / bash (e.g. cd '…'). */
 export function shellSingleQuotedPath(absPath: string): string {
   return "'" + absPath.replace(/'/g, "'\\''") + "'";
