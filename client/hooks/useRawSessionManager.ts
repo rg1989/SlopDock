@@ -24,13 +24,13 @@ export function useRawSessionManager(cwd: string | null): UseRawSessionManagerRe
 
   const add = useCallback(() => {
     if (!cwd) return;
+    const id = crypto.randomUUID();
     setSessions(prev => {
       if (prev.length >= MAX_RAW_SESSIONS) return prev;
-      const id = crypto.randomUUID();
       const newSession: RawSession = { id, status: 'connecting', cwd };
-      setActiveId(id);
       return [...prev, newSession];
     });
+    setActiveId(id);
   }, [cwd]);
 
   const remove = useCallback((id: string) => {
