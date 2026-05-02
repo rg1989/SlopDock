@@ -17,9 +17,12 @@ export function RawTerminalPane({ sessionId, cwd, isActive, onStatus }: RawTermi
   const wasActiveRef = useRef(isActive);
 
   useEffect(() => {
-    if (isActive && !wasActiveRef.current) setVisibleKey(k => k + 1);
+    if (isActive && !wasActiveRef.current) {
+      setVisibleKey(k => k + 1);
+      requestAnimationFrame(() => terminal?.focus());
+    }
     wasActiveRef.current = isActive;
-  }, [isActive]);
+  }, [isActive, terminal]);
 
   const cols = terminal?.cols ?? 80;
   const rows = terminal?.rows ?? 24;

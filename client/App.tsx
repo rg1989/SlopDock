@@ -549,7 +549,7 @@ export default function App() {
                   ? !sessionManager.sessions.some(s => s.name === 'New')
                   : sessionManager.hasPrompted
               }
-              onSetActive={sessionManager.setActive}
+              onSetActive={(id) => { sessionManager.setActive(id); requestAnimationFrame(() => composerRef.current?.focus()); }}
               onClose={sessionManager.close}
               onSpawn={() => { if (cwd) sessionManager.spawn(cwd); }}
               onOpenHistory={() => setHistoryOpen(true)}
