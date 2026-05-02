@@ -55,6 +55,7 @@ export function Terminal({ onReady, sendResize, visibleKey }: TerminalProps) {
         if (containerRef.current.clientWidth && containerRef.current.clientHeight) {
           fitAddon.fit();
         }
+        terminal.focus();
       }
 
       terminalRef.current = terminal;
@@ -96,6 +97,7 @@ export function Terminal({ onReady, sendResize, visibleKey }: TerminalProps) {
     <div
       ref={containerRef}
       style={{ width: '100%', height: '100%', background: '#0d1117' }}
+      onClick={() => terminalRef.current?.focus()}
     />
   );
 }
