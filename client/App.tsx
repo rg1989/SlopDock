@@ -30,7 +30,7 @@ import { useProjectHealth } from './hooks/useProjectHealth';
 import { HealthStatusBar } from './components/HealthStatusBar';
 import './App.css';
 
-type SidebarTabId = 'explorer' | 'changes' | 'roadmap' | 'brain' | 'canvas';
+type SidebarTabId = 'explorer' | 'changes' | 'roadmap' | 'brain';
 
 const IconExplorer = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -55,19 +55,11 @@ const IconBrain = () => (
     <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3z"/>
   </svg>
 );
-const IconCanvas = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-    <path d="M9 9h6v6H9z"/>
-  </svg>
-);
-
 const SIDEBAR_TABS: { id: SidebarTabId; label: string; Icon: () => JSX.Element }[] = [
   { id: 'explorer', label: 'Explorer', Icon: IconExplorer },
   { id: 'changes', label: 'Source Control', Icon: IconChanges },
   { id: 'roadmap', label: 'GSD Roadmap', Icon: IconRoadmap },
   { id: 'brain', label: 'Second Brain', Icon: IconBrain },
-  { id: 'canvas', label: 'Live Canvas', Icon: IconCanvas },
 ];
 
 // ── Layout constants ──────────────────────────────────────────────────────────
@@ -75,13 +67,17 @@ const STORAGE_KEY = 'slopmop_last_folder';
 const SIDEBAR_MIN = 180;
 const SIDEBAR_DEFAULT = 240;
 const RESIZE_HANDLE_WIDTH = 4;
+const CANVAS_DEFAULT_WIDTH = 360;
+const CANVAS_MIN = 200;
 
 // ── UI state persistence ──────────────────────────────────────────────────────
 const UI = {
-  sidebarTab:   'slopmop_ui:sidebar_tab',
-  sidebarWidth: 'slopmop_ui:sidebar_width',
-  editorWidth:  'slopmop_ui:editor_width',
-  editorTabs:   (cwd: string) => `slopmop_ui:editor_tabs:${cwd}`,
+  sidebarTab:    'slopmop_ui:sidebar_tab',
+  sidebarWidth:  'slopmop_ui:sidebar_width',
+  editorWidth:   'slopmop_ui:editor_width',
+  editorTabs:    (cwd: string) => `slopmop_ui:editor_tabs:${cwd}`,
+  canvasVisible: 'slopmop_ui:canvas_visible',
+  canvasWidth:   'slopmop_ui:canvas_width',
 } as const;
 
 function uiRead<T>(key: string, fallback: T): T {
@@ -135,7 +131,7 @@ export default function App() {
   const [rulesOpen, setRulesOpen] = useState(false);
   const [sidebarTab, setSidebarTabRaw] = useState<SidebarTabId>(() => {
     const saved = uiRead<string>(UI.sidebarTab, 'explorer');
-    const valid: SidebarTabId[] = ['explorer', 'changes', 'roadmap', 'brain', 'canvas'];
+    const valid: SidebarTabId[] = ['explorer', 'changes', 'roadmap', 'brain'];
     return valid.includes(saved as SidebarTabId) ? (saved as SidebarTabId) : 'explorer';
   });
   const [sidebarSearch, setSidebarSearch] = useState('');
@@ -168,10 +164,19 @@ export default function App() {
   const editorMaxRef = useRef<number>(Infinity);
   const [editorInitWidth] = useState(() => Math.max(180, uiRead(UI.editorWidth, 320)));
   const editor = useDragResize(editorInitWidth, 180, 'right', editorMaxRef);
+  const [isCanvasVisible, setIsCanvasVisible] = useState<boolean>(() =>
+    uiRead<boolean>(UI.canvasVisible, true)
+  );
+  const [canvasInitWidth] = useState(() =>
+    Math.max(CANVAS_MIN, Math.min(Math.floor(window.innerWidth / 3), uiRead(UI.canvasWidth, CANVAS_DEFAULT_WIDTH)))
+  );
+  const canvasMaxRef = useRef<number>(Infinity);
+  const canvas = useDragResize(canvasInitWidth, CANVAS_MIN, 'right', canvasMaxRef);
 
   // Track drag-end to persist widths (avoid writing on every pixel during drag)
   const prevSidebarDragging = useRef(false);
   const prevEditorDragging = useRef(false);
+  const prevCanvasDragging = useRef(false);
   useEffect(() => {
     if (prevSidebarDragging.current && !sidebar.isDragging) uiWrite(UI.sidebarWidth, sidebar.width);
     prevSidebarDragging.current = sidebar.isDragging;
@@ -180,6 +185,17 @@ export default function App() {
     if (prevEditorDragging.current && !editor.isDragging) uiWrite(UI.editorWidth, editor.width);
     prevEditorDragging.current = editor.isDragging;
   }, [editor.isDragging, editor.width]);
+  useEffect(() => {
+    if (prevCanvasDragging.current && !canvas.isDragging) uiWrite(UI.canvasWidth, canvas.width);
+    prevCanvasDragging.current = canvas.isDragging;
+  }, [canvas.isDragging, canvas.width]);
+
+  const toggleCanvas = useCallback(() => {
+    setIsCanvasVisible(v => {
+      uiWrite(UI.canvasVisible, !v);
+      return !v;
+    });
+  }, []);
 
   // Ref used to restore editor tabs exactly once per cwd
   const initialSessionRestoredRef = useRef(false);
@@ -233,6 +249,10 @@ export default function App() {
   // ── Layout max-width refs (updated every render) ─────────────────────────────
   sidebarMaxRef.current = window.innerWidth - 300 - RESIZE_HANDLE_WIDTH;
   editorMaxRef.current = window.innerWidth - (cwd ? sidebar.width + RESIZE_HANDLE_WIDTH : 0) - 300;
+  canvasMaxRef.current = window.innerWidth
+    - (cwd ? sidebar.width + RESIZE_HANDLE_WIDTH : 0)
+    - 300
+    - (activeTabs.length > 0 ? editor.width + RESIZE_HANDLE_WIDTH : 0);
 
   // Guard against React StrictMode double-invoking the initial spawn effect
   const initialSpawnedRef = useRef(false);
@@ -451,7 +471,7 @@ export default function App() {
                     activeFilePath={activeFilePath}
                     onSendCommand={(cmd) => activeActionsRef.current?.sendInput('\x15' + cmd + '\r')}
                   />
-                ) : sidebarTab === 'brain' ? (
+                ) : (
                   <BrainPanel
                     cwd={cwd}
                     onOpenEntry={handleSidebarBrainEntry}
@@ -459,8 +479,6 @@ export default function App() {
                     refreshKey={brainRefreshKey}
                     activeEntryId={activeBrainTabId?.startsWith('brain:') ? activeBrainTabId.slice(6) : undefined}
                   />
-                ) : (
-                  <LiveCanvasPanel cwd={cwd} />
                 )}
               </div>
             </div>
@@ -584,6 +602,31 @@ export default function App() {
                   />
                 );
               })()}
+            </div>
+          </>
+        )}
+
+        {/* Canvas column — persistent right panel, shown when cwd is set and canvas is visible */}
+        {cwd && isCanvasVisible && (
+          <>
+            <div
+              className={`resize-handle${canvas.isDragging ? ' dragging' : ''}`}
+              onMouseDown={canvas.onMouseDown}
+            />
+            <div className="canvas-column" style={{ width: canvas.width }}>
+              <div className="canvas-column-header">
+                <span className="canvas-column-label">Canvas</span>
+                <button
+                  className="canvas-toggle-btn"
+                  title="Hide canvas"
+                  onClick={toggleCanvas}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+              <LiveCanvasPanel cwd={cwd} isDragging={canvas.isDragging} />
             </div>
           </>
         )}
