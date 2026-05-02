@@ -637,30 +637,27 @@ export default function App() {
               </svg>
             </button>
           </div>
-          {bottomPanelOpen && (
-            <>
-              <div
-                className={`resize-handle--h${bottomPanel.isDragging ? ' dragging' : ''}`}
-                onMouseDown={bottomPanel.onMouseDown}
+          <div
+            className={`resize-handle--h${bottomPanel.isDragging ? ' dragging' : ''}`}
+            onMouseDown={bottomPanel.onMouseDown}
+            style={{ display: bottomPanelOpen ? undefined : 'none' }}
+          />
+          <div
+            className="bottom-panel"
+            style={{ height: bottomPanel.width, display: bottomPanelOpen ? undefined : 'none' }}
+          >
+            <div className="bottom-panel-body">
+            {rawSessions.map(s => (
+              <RawTerminalPane
+                key={s.id}
+                sessionId={s.id}
+                cwd={s.cwd}
+                isActive={s.id === rawActiveId}
+                onStatus={status => rawUpdateStatus(s.id, status)}
               />
-              <div
-                className="bottom-panel"
-                style={{ height: bottomPanel.width }}
-              >
-                <div className="bottom-panel-body">
-                {rawSessions.map(s => (
-                  <RawTerminalPane
-                    key={s.id}
-                    sessionId={s.id}
-                    cwd={s.cwd}
-                    isActive={s.id === rawActiveId}
-                    onStatus={status => rawUpdateStatus(s.id, status)}
-                  />
-                ))}
-                </div>
-              </div>
-            </>
-          )}
+            ))}
+            </div>
+          </div>
         </div>
 
         {/* Editor panel — right column, full height, shown when tabs are open */}

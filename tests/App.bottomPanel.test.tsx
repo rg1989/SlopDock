@@ -173,7 +173,7 @@ describe('BPANEL-02: bottom panel body hidden when closed', () => {
     localStorage.setItem('slopmop_last_folder', '/test/project');
   });
 
-  it('bottom-panel element not present when closed', async () => {
+  it('bottom-panel element hidden when closed', async () => {
     const { container } = render(<App />);
 
     await waitFor(() => {
@@ -181,7 +181,12 @@ describe('BPANEL-02: bottom panel body hidden when closed', () => {
       expect(tabBar).not.toBeNull();
     });
 
-    expect(container.querySelector('.bottom-panel')).toBeNull();
+    const panel = container.querySelector('.bottom-panel') as HTMLElement | null;
+    if (panel) {
+      expect(panel.style.display).toBe('none');
+    } else {
+      expect(panel).toBeNull();
+    }
   });
 });
 
