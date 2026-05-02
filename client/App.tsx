@@ -70,6 +70,8 @@ const RESIZE_HANDLE_WIDTH = 4;
 const CANVAS_DEFAULT_WIDTH = 360;
 const CANVAS_MIN = 200;
 const CANVAS_MIN_CENTER = 280;
+const BOTTOM_PANEL_DEFAULT_HEIGHT = 200;
+const BOTTOM_PANEL_MIN = 80;
 
 // ── UI state persistence ──────────────────────────────────────────────────────
 const UI = {
@@ -79,6 +81,8 @@ const UI = {
   editorTabs:    (cwd: string) => `slopmop_ui:editor_tabs:${cwd}`,
   canvasVisible: 'slopmop_ui:canvas_visible',
   canvasWidth:   'slopmop_ui:canvas_width',
+  bottomPanelOpen:   'slopmop_ui:bottom_panel_open',
+  bottomPanelHeight: 'slopmop_ui:bottom_panel_height',
 } as const;
 
 function uiRead<T>(key: string, fallback: T): T {
@@ -175,6 +179,14 @@ export default function App() {
   });
   const canvasMaxRef = useRef<number>(Infinity);
   const canvas = useDragResize(canvasInitWidth, CANVAS_MIN, 'right', canvasMaxRef);
+  const [bottomPanelOpen, setBottomPanelOpen] = useState<boolean>(() =>
+    uiRead<boolean>(UI.bottomPanelOpen, false)
+  );
+  const [bottomPanelInitHeight] = useState(() =>
+    Math.max(BOTTOM_PANEL_MIN, uiRead(UI.bottomPanelHeight, BOTTOM_PANEL_DEFAULT_HEIGHT))
+  );
+  const bottomPanelMaxRef = useRef<number>(Infinity);
+  const bottomPanel = useDragResize(bottomPanelInitHeight, BOTTOM_PANEL_MIN, 'up', bottomPanelMaxRef);
 
   // Track drag-end to persist widths (avoid writing on every pixel during drag)
   const prevSidebarDragging = useRef(false);
@@ -192,6 +204,20 @@ export default function App() {
     if (prevCanvasDragging.current && !canvas.isDragging) uiWrite(UI.canvasWidth, canvas.width);
     prevCanvasDragging.current = canvas.isDragging;
   }, [canvas.isDragging, canvas.width]);
+
+  const prevBottomPanelDragging = useRef(false);
+  useEffect(() => {
+    if (prevBottomPanelDragging.current && !bottomPanel.isDragging)
+      uiWrite(UI.bottomPanelHeight, bottomPanel.width);
+    prevBottomPanelDragging.current = bottomPanel.isDragging;
+  }, [bottomPanel.isDragging, bottomPanel.width]);
+
+  const toggleBottomPanel = useCallback(() => {
+    setBottomPanelOpen(v => {
+      uiWrite(UI.bottomPanelOpen, !v);
+      return !v;
+    });
+  }, []);
 
   const toggleCanvas = useCallback(() => {
     setIsCanvasVisible(v => {
@@ -256,6 +282,7 @@ export default function App() {
     const currentSidebarWidth = cwd ? sidebar.width + RESIZE_HANDLE_WIDTH : 0;
     canvasMaxRef.current = window.innerWidth - currentSidebarWidth - CANVAS_MIN_CENTER - RESIZE_HANDLE_WIDTH;
   }
+  bottomPanelMaxRef.current = Math.floor(window.innerHeight * 0.5);
 
   // Guard against React StrictMode double-invoking the initial spawn effect
   const initialSpawnedRef = useRef(false);
@@ -566,6 +593,37 @@ export default function App() {
               />
             ))}
           </div>
+          <div className="bottom-panel-tab-bar">
+            <div className="bottom-panel-tab-bar-tabs">
+            </div>
+            <button
+              className="bottom-panel-toggle-btn"
+              title={bottomPanelOpen ? 'Collapse panel' : 'Expand panel'}
+              onClick={toggleBottomPanel}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                {bottomPanelOpen
+                  ? <polyline points="18 15 12 9 6 15" />
+                  : <polyline points="6 9 12 15 18 9" />
+                }
+              </svg>
+            </button>
+          </div>
+          {bottomPanelOpen && (
+            <>
+              <div
+                className={`resize-handle--h${bottomPanel.isDragging ? ' dragging' : ''}`}
+                onMouseDown={bottomPanel.onMouseDown}
+              />
+              <div
+                className="bottom-panel"
+                style={{ height: bottomPanel.width }}
+              >
+                <div className="bottom-panel-body">
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Editor panel — right column, full height, shown when tabs are open */}

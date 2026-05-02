@@ -4353,3 +4353,52 @@ html, body, #root { height: 100%; background: var(--bg); color: var(--txt); font
   display: block;
   background: #fff;
 }
+
+/* ── Bottom panel ─────────────────────────────────────────────── */
+
+.bottom-panel-tab-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  height: 32px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+.bottom-panel-tab-bar-tabs {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.bottom-panel-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--txt-dim);
+  padding: 4px 8px;
+  height: 100%;
+  transition: color 0.12s, background 0.12s;
+}
+
+.bottom-panel-toggle-btn:hover {
+  color: var(--txt);
+  background: var(--surface-hover);
+}
+
+.bottom-panel {
+  flex-shrink: 0;
+  overflow: hidden;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+}
+
+.bottom-panel-body {
+  flex: 1;
+  overflow: hidden;
+}

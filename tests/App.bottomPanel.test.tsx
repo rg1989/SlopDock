@@ -3,7 +3,7 @@ import { render, waitFor, fireEvent } from '@testing-library/react';
 import React from 'react';
 
 vi.mock('../client/hooks/useDragResize', () => ({
-  useDragResize: () => ({ width: 240, isDragging: false, onMouseDown: vi.fn(), setWidth: vi.fn() }),
+  useDragResize: (initialWidth: number) => ({ width: initialWidth, isDragging: false, onMouseDown: vi.fn(), setWidth: vi.fn() }),
 }));
 
 vi.mock('../client/hooks/useSessionManager', () => ({
