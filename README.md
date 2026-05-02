@@ -11,7 +11,7 @@
 
 Open a browser. Select a folder. Start building.
 
-*Drowning in slop? grab a mop. SlopMop is where you dock it, manage it, review it, and ship the parts that aren't.*
+*Drowning in slop? grab a mop. Or let SlopMop keep the chaos at bay, manage it, review it, and ship the parts that aren't.*
 
 </div>
 
