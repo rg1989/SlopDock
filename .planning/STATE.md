@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Foundation ✅ SHIPPED 2026-05-02
 status: completed
-stopped_at: Completed 10-03-PLAN.md
-last_updated: "2026-05-02T19:30:49.954Z"
+stopped_at: Completed 11-03-PLAN.md
+last_updated: "2026-05-02T20:02:22.559Z"
 last_activity: "2026-04-30 - Completed quick task 1: add syntax colors and edit mode to file preview panel"
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  total_plans: 7
+  completed_plans: 4
   percent: 100
 ---
 
@@ -78,6 +78,7 @@ Progress: [██████████] 100% (All Phases)
 | Phase 10-pty-session-persistence P02 | 5min | 2 tasks | 3 files |
 | Phase 10-pty-session-persistence P03 | 2min | 1 tasks | 1 files |
 | Phase 10-pty-session-persistence P03 | 2min | 2 tasks | 1 files |
+| Phase 11-canvas-panel-extraction P03 | 2min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -150,6 +151,8 @@ Recent decisions affecting current work:
 - [Phase 10-02]: session-ready handler in usePty sets 'waiting' unconditionally — works for fresh connections and reconnects without special-casing
 - [Phase 10-02]: sessionId in usePty effect deps is the minimal change for re-running effect on restore; overrideSessionIdRef logic for exit/fresh-spawn path untouched
 - [Phase 10-03]: Defined @keyframes pulse inline since no generic pulse keyframe existed in App.css
+- [Phase 11-03]: No font-family declarations in canvas CSS — global * rule in App.css handles inheritance per CLAUDE.md
+- [Phase 11-03]: canvas-column .live-canvas-panel override not needed — .live-canvas-panel already has flex:1 and overflow:hidden
 
 ### Roadmap Evolution
 
@@ -174,6 +177,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-02T19:21:42.784Z
-Stopped at: Completed 10-03-PLAN.md
+Last session: 2026-05-02T20:02:22.557Z
+Stopped at: Completed 11-03-PLAN.md
 Resume file: None

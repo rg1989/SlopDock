@@ -39,7 +39,7 @@ Plans:
 
 **Depends on:** Phase 10
 **Requirements:** CANVAS-01, CANVAS-02, CANVAS-03, CANVAS-04, CANVAS-05
-**Plans:** 4 plans
+**Plans:** 1/4 plans executed
 
 Plans:
 - [ ] 11-01-PLAN.md — Wave 0 RED test stubs for all 5 canvas behaviors (sidebar tab removal, visibility toggle, localStorage persistence)
@@ -71,6 +71,6 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1–9. v1.0 Foundation | 25/25 | ✅ Complete | 2026-05-02 |
 | 10. PTY Session Persistence | 3/3 | Complete    | 2026-05-02 |
-| 11. Canvas Panel Extraction | 0/4 | Planned | — |
+| 11. Canvas Panel Extraction | 1/4 | In Progress|  |
 | 12. Bottom Panel Shell | 0/? | Planned | — |
 | 13. Raw Terminal Sessions | 0/? | Planned | — |
