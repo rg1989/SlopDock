@@ -27,6 +27,9 @@ export function spawnSession(
       ...process.env,
       PATH: LOGIN_PATH,
       TERM: 'xterm-256color',
+      COLORTERM: 'truecolor',
+      CLICOLOR: '1',
+      LSCOLORS: 'ExFxBxDxCxegedabagacad',
     },
   });
 }

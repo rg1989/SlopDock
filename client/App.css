@@ -4404,7 +4404,9 @@ html, body, #root { height: 100%; background: var(--bg); color: var(--txt); font
 
 .bottom-panel-body {
   flex: 1;
+  min-height: 0;
   overflow: hidden;
+  display: flex;
 }
 
 .bpanel-tab {

@@ -24,16 +24,22 @@ export function RawTerminalPane({ sessionId, cwd, isActive, onStatus }: RawTermi
   const cols = terminal?.cols ?? 80;
   const rows = terminal?.rows ?? 24;
 
-  const { sendResize } = usePty({
+  const { sendInput, sendResize } = usePty({
     cwd,
     terminal,
     cols,
     rows,
-    agentConfig: { command: 'bash', args: [], label: 'shell' },
+    agentConfig: { command: 'bash', args: ['-i'], label: 'shell' },
     sessionId,
     onStatus,
     killOnUnmount: true,
   });
+
+  useEffect(() => {
+    if (!terminal) return;
+    const disposable = terminal.onData(sendInput);
+    return () => disposable.dispose();
+  }, [terminal, sendInput]);
 
   return (
     <div

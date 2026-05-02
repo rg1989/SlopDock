@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { SessionStatus } from './usePty';
 
 export interface RawSession {
@@ -17,10 +17,27 @@ export interface UseRawSessionManagerReturn {
 }
 
 const MAX_RAW_SESSIONS = 4;
+const STORAGE_KEY = 'slopmop:raw-sessions';
+
+function loadSaved(): { sessions: RawSession[]; activeId: string | null } {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return { sessions: [], activeId: null };
+    const { sessions, activeId } = JSON.parse(raw) as { sessions: RawSession[]; activeId: string | null };
+    const restored = sessions.map(s => ({ ...s, status: 'connecting' as const }));
+    return { sessions: restored, activeId: activeId ?? (restored[0]?.id ?? null) };
+  } catch {
+    return { sessions: [], activeId: null };
+  }
+}
 
 export function useRawSessionManager(cwd: string | null): UseRawSessionManagerReturn {
-  const [sessions, setSessions] = useState<RawSession[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<RawSession[]>(() => loadSaved().sessions);
+  const [activeId, setActiveId] = useState<string | null>(() => loadSaved().activeId);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ sessions, activeId }));
+  }, [sessions, activeId]);
 
   const add = useCallback(() => {
     if (!cwd) return;
