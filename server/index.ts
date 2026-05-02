@@ -12,7 +12,7 @@ import { attachWebSocketServer } from './ws-handler.js';
 import { buildFileTree, getGitChangedPaths, getGitStatus } from './file-api.js';
 import { initPiper, getPiperStatus, synthesize } from './piper-tts.js';
 import { checkWhisper, getWhisperStatus, transcribe } from './whisper-stt.js';
-import { parseRoadmapMd, parseStateMd, patchRoadmapRemovePlan } from './gsd.js';
+import { parseRoadmapMd, parseStateMd, patchRoadmapRemovePlan, parseMilestonesMd, parseArchivedRoadmapMd, parseCurrentMilestoneFromRoadmap } from './gsd.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -491,6 +491,58 @@ app.post('/api/tts', async (req, res) => {
   res.type('audio/wav').send(wav);
 });
 
+async function resolvePhaseFiles(
+  phase: { number: number; name: string; goal: string },
+  planningDir: string,
+  phaseDirs: string[],
+) {
+  const numStr = String(Math.floor(phase.number)).padStart(2, '0');
+  const dirName = phaseDirs.find(d => d.startsWith(numStr + '-')) ?? '';
+  const absPhaseDir = dirName ? path.join(planningDir, 'phases', dirName) : null;
+
+  const plans: { id: string; name: string; completed: boolean; planPath: string | null; summaryPath: string | null }[] = [];
+  if (absPhaseDir) {
+    try {
+      const entries = await readdir(absPhaseDir);
+      const planFiles = entries.filter(f => f.endsWith('-PLAN.md')).sort();
+      for (const planFile of planFiles) {
+        const planId = planFile.replace('-PLAN.md', '');
+        const planPath = path.join(absPhaseDir, planFile);
+        const summaryPath = path.join(absPhaseDir, planFile.replace('-PLAN.md', '-SUMMARY.md'));
+        let completed = false;
+        let planName = planId;
+        try { await fsAccess(summaryPath); completed = true; } catch { /* not done */ }
+        try {
+          const content = await readFile(planPath, 'utf-8');
+          const m = content.match(/<objective>\s*\n([^\n<]+)/);
+          if (m) planName = m[1].trim();
+        } catch { /* use id as fallback */ }
+        plans.push({ id: planId, name: planName, completed, planPath, summaryPath });
+      }
+    } catch { /* phase dir unreadable */ }
+  }
+
+  let researchPath: string | null = null;
+  let verificationPath: string | null = null;
+  if (absPhaseDir) {
+    const rFile = path.join(absPhaseDir, `${numStr}-RESEARCH.md`);
+    const vFile = path.join(absPhaseDir, `${numStr}-VERIFICATION.md`);
+    try { await fsAccess(rFile); researchPath = rFile; } catch { /* not present */ }
+    try { await fsAccess(vFile); verificationPath = vFile; } catch { /* not present */ }
+  }
+
+  return {
+    number: phase.number,
+    name: phase.name,
+    goal: phase.goal,
+    completed: plans.length > 0 && plans.every(p => p.completed),
+    dirName,
+    researchPath,
+    verificationPath,
+    plans,
+  };
+}
+
 // GET /api/gsd-roadmap — parse .planning/ and return structured roadmap data
 app.get('/api/gsd-roadmap', async (req, res) => {
   const cwd = (req.query.cwd as string) ?? '';
@@ -510,6 +562,7 @@ app.get('/api/gsd-roadmap', async (req, res) => {
 
   const parsedPhases = parseRoadmapMd(roadmapContent);
   const stateData = parseStateMd(stateContent);
+  const currentMs = parseCurrentMilestoneFromRoadmap(roadmapContent);
 
   let phaseDirs: string[] = [];
   try {
@@ -603,7 +656,23 @@ app.get('/api/gsd-roadmap', async (req, res) => {
   try { await fsAccess(path.join(planningDir, 'PROJECT.md')); projectPath = path.join(planningDir, 'PROJECT.md'); } catch { /* optional */ }
   try { await fsAccess(path.join(planningDir, 'REQUIREMENTS.md')); requirementsPath = path.join(planningDir, 'REQUIREMENTS.md'); } catch { /* optional */ }
 
-  res.json({ exists: true, milestone: stateData.milestone, milestoneName: stateData.milestoneName, status: stateData.status, progress: stateData.progress, phases, quickTasks, roadmapPath, statePath, projectPath, requirementsPath });
+  // Load past milestones from MILESTONES.md + archived roadmaps, resolve file paths from disk
+  const pastMilestones: { version: string; name: string; shipped: string; phases: Awaited<ReturnType<typeof resolvePhaseFiles>>[] }[] = [];
+  try {
+    const msContent = await readFile(path.join(planningDir, 'MILESTONES.md'), 'utf-8');
+    const msEntries = parseMilestonesMd(msContent);
+    for (const entry of msEntries.reverse()) {
+      let resolvedPhases: Awaited<ReturnType<typeof resolvePhaseFiles>>[] = [];
+      try {
+        const archivedContent = await readFile(path.join(planningDir, 'milestones', `${entry.version}-ROADMAP.md`), 'utf-8');
+        const archivedStructure = parseArchivedRoadmapMd(archivedContent);
+        resolvedPhases = await Promise.all(archivedStructure.map(p => resolvePhaseFiles(p, planningDir, phaseDirs)));
+      } catch { /* archived roadmap may not exist */ }
+      pastMilestones.push({ ...entry, phases: resolvedPhases });
+    }
+  } catch { /* MILESTONES.md may not exist */ }
+
+  res.json({ exists: true, milestone: currentMs.version || stateData.milestone, milestoneName: currentMs.name || stateData.milestoneName, status: stateData.status, progress: stateData.progress, phases, quickTasks, pastMilestones, roadmapPath, statePath, projectPath, requirementsPath });
 });
 
 // DELETE /api/gsd/phase — remove a phase via gsd-tools
@@ -1174,3 +1243,17 @@ server.listen(PORT, () => {
   checkWhisper().catch(() => {});
   setupAutoBackupSchedule().then(() => autoBackupVault()).catch(() => {});
 });
+
+let shuttingDown = false;
+function shutdown(signal: string): void {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`[server] ${signal} received, shutting down`);
+  // Close all sockets first so HTTP+WS upgrades don't keep the loop alive
+  server.closeAllConnections?.();
+  server.close(() => process.exit(0));
+  setTimeout(() => process.exit(0), 1500).unref();
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGHUP', () => shutdown('SIGHUP'));

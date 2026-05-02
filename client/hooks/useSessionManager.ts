@@ -60,12 +60,10 @@ function loadActiveSessions(cwd: string): { sessions: SessionEntry[]; activeId: 
 
 function saveActiveSessions(cwd: string, sessions: SessionEntry[], activeId: string | null) {
   try {
-    // Only persist sessions that were alive (not already closed/done/error)
-    const toSave = sessions.filter(s => s.status !== 'done' && s.status !== 'error');
-    if (toSave.length === 0) {
+    if (sessions.length === 0) {
       localStorage.removeItem(ACTIVE_KEY(cwd));
     } else {
-      localStorage.setItem(ACTIVE_KEY(cwd), JSON.stringify({ sessions: toSave, activeId }));
+      localStorage.setItem(ACTIVE_KEY(cwd), JSON.stringify({ sessions, activeId }));
     }
   } catch {}
 }
@@ -117,6 +115,10 @@ export function useSessionManager(): UseSessionManagerReturn {
     initialSessionIdRef.current = initialSession?.id ?? null;
     setSessions(reconnecting);
     setActiveId(savedActiveId ?? initialSession?.id ?? null);
+    // If any restored session has a real name, the user already sent a message — restore the unlocked state
+    if (reconnecting.some(s => s.name && s.name !== '' && s.name !== 'New')) {
+      setHasPrompted(true);
+    }
   }, []);
 
   const spawn = useCallback((cwd: string, { initial = false }: { initial?: boolean } = {}): string => {
@@ -127,12 +129,12 @@ export function useSessionManager(): UseSessionManagerReturn {
 
     if (initial) {
       if (initialSessionIdRef.current) {
-        setActiveId(initialSessionIdRef.current);
+        if (activeIdRef.current == null) setActiveId(initialSessionIdRef.current);
         return initialSessionIdRef.current;
       }
       const existing = current.find(s => s.name === '');
       if (existing) {
-        setActiveId(existing.id);
+        if (activeIdRef.current == null) setActiveId(existing.id);
         return existing.id;
       }
     }

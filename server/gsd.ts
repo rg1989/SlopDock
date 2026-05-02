@@ -123,6 +123,60 @@ export function parseStateMd(content: string): StateData {
   };
 }
 
+export type ArchivedPhaseSummary = {
+  number: number;
+  name: string;
+  goal: string;
+  planCount: number;
+};
+
+export type MilestoneEntry = {
+  version: string;
+  name: string;
+  shipped: string;
+};
+
+export function parseMilestonesMd(content: string): MilestoneEntry[] {
+  const entries: MilestoneEntry[] = [];
+  const re = /^## (v[\d.]+) (.+?) ✅ SHIPPED (\d{4}-\d{2}-\d{2})/gm;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(content)) !== null) {
+    entries.push({ version: m[1], name: m[2].trim(), shipped: m[3] });
+  }
+  return entries;
+}
+
+export function parseArchivedRoadmapMd(content: string): ArchivedPhaseSummary[] {
+  const lines = content.split('\n');
+  const phases: ArchivedPhaseSummary[] = [];
+  let current: ArchivedPhaseSummary | null = null;
+  let inPlans = false;
+
+  for (const line of lines) {
+    const phaseM = line.match(/^### Phase (\d+(?:\.\d+)?): (.+)/);
+    if (phaseM) {
+      current = { number: parseFloat(phaseM[1]), name: phaseM[2].trim(), goal: '', planCount: 0 };
+      phases.push(current);
+      inPlans = false;
+      continue;
+    }
+    if (!current) continue;
+    const goalM = line.match(/^\*\*Goal\*\*: (.+)/);
+    if (goalM) { current.goal = goalM[1].trim(); continue; }
+    if (line.trim() === 'Plans:') { inPlans = true; continue; }
+    if (/^### /.test(line)) { inPlans = false; continue; }
+    if (inPlans && /^- \[/.test(line)) current.planCount++;
+  }
+
+  return phases.sort((a, b) => a.number - b.number);
+}
+
+export function parseCurrentMilestoneFromRoadmap(content: string): { version: string; name: string } {
+  const m = content.match(/^## (v[\d.]+): ([^\n]+)/m);
+  if (m) return { version: m[1], name: m[2].trim() };
+  return { version: 'v?', name: '' };
+}
+
 export function patchRoadmapRemovePlan(content: string, phaseNum: number, planId: string): string {
   const planLineRe = new RegExp(`^- \\[[ x]\\] ${escRe(planId)}-PLAN\\.md[^\\n]*\\n?`, 'm');
   let updated = content.replace(planLineRe, '');

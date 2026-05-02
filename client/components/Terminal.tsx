@@ -7,9 +7,11 @@ import '@xterm/xterm/css/xterm.css';
 interface TerminalProps {
   onReady: (terminal: XTerminal) => void;
   sendResize: (cols: number, rows: number) => void;
+  /** Bumped by parent when this terminal becomes visible again so we can re-fit + repaint. */
+  visibleKey?: number;
 }
 
-export function Terminal({ onReady, sendResize }: TerminalProps) {
+export function Terminal({ onReady, sendResize, visibleKey }: TerminalProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<XTerminal | null>(null);
   const fitAddonRef = useRef<XFitAddon | null>(null);
@@ -50,7 +52,9 @@ export function Terminal({ onReady, sendResize }: TerminalProps) {
 
       if (containerRef.current) {
         terminal.open(containerRef.current);
-        fitAddon.fit();
+        if (containerRef.current.clientWidth && containerRef.current.clientHeight) {
+          fitAddon.fit();
+        }
       }
 
       terminalRef.current = terminal;
@@ -71,6 +75,22 @@ export function Terminal({ onReady, sendResize }: TerminalProps) {
   }, [onReady]);
 
   useResize(containerRef, terminalRef.current, fitAddonRef.current, sendResize);
+
+  useEffect(() => {
+    if (visibleKey === undefined) return;
+    const el = containerRef.current;
+    const term = terminalRef.current;
+    const fit = fitAddonRef.current;
+    if (!el || !term || !fit) return;
+    if (!el.clientWidth || !el.clientHeight) return;
+    requestAnimationFrame(() => {
+      try {
+        fit.fit();
+        sendResize(term.cols, term.rows);
+        term.refresh(0, term.rows - 1);
+      } catch { /* xterm may be mid-dispose */ }
+    });
+  }, [visibleKey, sendResize]);
 
   return (
     <div

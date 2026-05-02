@@ -37,6 +37,9 @@ function deriveWsUrl(override?: string): string {
 export function usePty({ cwd, terminal, cols, rows, agentConfig, onData, sessionId, onStatus, onExit, wsUrl }: UsePtyOptions): UsePtyReturn {
   const wsRef = useRef<WebSocket | null>(null);
   const [connected, setConnected] = useState(false);
+  const [reconnectKey, setReconnectKey] = useState(0);
+  // When PTY exits we want a fresh session, not a replay of the exited one
+  const overrideSessionIdRef = useRef<string | null>(null);
   const onDataRef = useRef(onData);
   const onStatusRef = useRef(onStatus);
   const onExitRef = useRef(onExit);
@@ -55,13 +58,14 @@ export function usePty({ cwd, terminal, cols, rows, agentConfig, onData, session
   useEffect(() => {
     if (!cwd || !terminal) return;
 
-    const resolvedSessionId = sessionId ?? crypto.randomUUID();
+    let cancelled = false;
+    const resolvedSessionId = overrideSessionIdRef.current ?? sessionId ?? crypto.randomUUID();
+    overrideSessionIdRef.current = null;
 
     const ws = new WebSocket(deriveWsUrl(wsUrl));
     wsRef.current = ws;
 
     ws.onopen = () => {
-      terminal.reset();
       setConnected(true);
       send({ type: 'start', sessionId: resolvedSessionId, cwd, cols, rows, agentCommand: agentConfig.command, agentArgs: agentConfig.args });
     };
@@ -91,6 +95,14 @@ export function usePty({ cwd, terminal, cols, rows, agentConfig, onData, session
         onExitRef.current?.(msg.code);
         setConnected(false);
         console.info('PTY exited with code:', msg.code);
+        setTimeout(() => {
+          if (!cancelled) {
+            // Use a new sessionId so the server spawns a fresh PTY
+            // instead of replaying the already-exited session
+            overrideSessionIdRef.current = crypto.randomUUID();
+            setReconnectKey(k => k + 1);
+          }
+        }, 800);
       }
     };
 
@@ -98,6 +110,7 @@ export function usePty({ cwd, terminal, cols, rows, agentConfig, onData, session
     ws.onclose = () => setConnected(false);
 
     return () => {
+      cancelled = true;
       if (workingTimerRef.current) {
         clearTimeout(workingTimerRef.current);
         workingTimerRef.current = null;
@@ -106,7 +119,7 @@ export function usePty({ cwd, terminal, cols, rows, agentConfig, onData, session
       wsRef.current = null;
       setConnected(false);
     };
-  }, [cwd, terminal]); // cols/rows intentionally excluded — resize handled separately
+  }, [cwd, terminal, reconnectKey]); // cols/rows intentionally excluded — resize handled separately
 
   const sendInput = useCallback((data: string) => send({ type: 'input', data }), [send]);
   const sendResize = useCallback((c: number, r: number) => send({ type: 'resize', cols: c, rows: r }), [send]);

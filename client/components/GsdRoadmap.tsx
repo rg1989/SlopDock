@@ -30,6 +30,13 @@ interface GsdQuickTask {
   planPath: string | null;
 }
 
+interface PastMilestone {
+  version: string;
+  name: string;
+  shipped: string;
+  phases: GsdPhase[];
+}
+
 interface GsdRoadmapData {
   exists: true;
   milestone: string;
@@ -38,6 +45,7 @@ interface GsdRoadmapData {
   progress: { totalPhases: number; completedPhases: number; totalPlans: number; completedPlans: number; percent: number };
   phases: GsdPhase[];
   quickTasks: GsdQuickTask[];
+  pastMilestones: PastMilestone[];
   roadmapPath: string;
   statePath: string;
   projectPath: string | null;
@@ -132,6 +140,8 @@ export const GsdRoadmap: FC<GsdRoadmapProps> = ({ cwd, onOpenFile, activeFilePat
   const [data, setData] = useState<RoadmapResponse | null>(null);
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
   const [quickDoneCollapsed, setQuickDoneCollapsed] = useState(true);
+  const [collapsedMilestones, setCollapsedMilestones] = useState<Set<string>>(new Set());
+  const [collapsedPastPhases, setCollapsedPastPhases] = useState<Set<number>>(new Set());
   const [pendingDelete, setPendingDelete] = useState<{
     label: string;
     endpoint: string;
@@ -171,10 +181,12 @@ export const GsdRoadmap: FC<GsdRoadmapProps> = ({ cwd, onOpenFile, activeFilePat
         if (d.exists && !initializedRef.current) {
           initializedRef.current = true;
           const rd = d as GsdRoadmapData;
-          // Expand only the active phase (first in-progress), collapse everything else
           const activeNum = rd.phases.find(p => !p.completed && p.plans.some((pl: GsdPlan) => pl.completed))?.number
             ?? rd.phases.find(p => !p.completed)?.number;
           setCollapsed(new Set(rd.phases.filter(p => p.number !== activeNum).map(p => p.number)));
+          // Collapse all past milestones by default, and all their phases
+          setCollapsedMilestones(new Set((rd.pastMilestones ?? []).map(m => m.version)));
+          setCollapsedPastPhases(new Set((rd.pastMilestones ?? []).flatMap(m => m.phases.map(p => p.number))));
         }
       })
       .catch(() => { if (!silent) setData({ exists: false }); });
@@ -259,7 +271,23 @@ export const GsdRoadmap: FC<GsdRoadmapProps> = ({ cwd, onOpenFile, activeFilePat
   }
 
   const rd = data as GsdRoadmapData;
-  const { milestone, status, phases, quickTasks, roadmapPath, statePath, projectPath, requirementsPath } = rd;
+  const { milestone, milestoneName, status, phases, quickTasks, pastMilestones, roadmapPath, statePath, projectPath, requirementsPath } = rd;
+
+  const toggleMilestone = (version: string) => {
+    setCollapsedMilestones(prev => {
+      const next = new Set(prev);
+      if (next.has(version)) next.delete(version); else next.add(version);
+      return next;
+    });
+  };
+
+  const togglePastPhase = (num: number) => {
+    setCollapsedPastPhases(prev => {
+      const next = new Set(prev);
+      if (next.has(num)) next.delete(num); else next.add(num);
+      return next;
+    });
+  };
   const allPlans = phases.flatMap(p => p.plans);
   const actualCompleted = allPlans.filter(p => p.completed).length;
   const actualTotal = allPlans.length;
@@ -282,6 +310,7 @@ export const GsdRoadmap: FC<GsdRoadmapProps> = ({ cwd, onOpenFile, activeFilePat
             <span className="rm-version-text">version</span>
             <span className="rm-version-num" style={{ color }}>{(milestone || 'v?').replace(/^v/, '')}</span>
           </span>
+          {milestoneName && <span className="rm-milestone-name">{milestoneName}</span>}
           <div className="rm-header-actions" ref={addMenuRef}>
             <button
               className="rm-add-btn"
@@ -423,6 +452,14 @@ export const GsdRoadmap: FC<GsdRoadmapProps> = ({ cwd, onOpenFile, activeFilePat
         </div>
 
         {!phasesCollapsed && (
+          <>
+          {/* Current milestone label */}
+          {milestone && (
+            <div className="rm-ms-current-label">
+              <span className="rm-ms-badge rm-ms-badge--current">{milestone}</span>
+              <span className="rm-ms-label-name">{milestoneName}</span>
+            </div>
+          )}
           <div className="rm-timeline">
             {[...phases].reverse().map((phase, phaseIdx) => {
               const isOpen = !collapsed.has(phase.number);
@@ -511,6 +548,82 @@ export const GsdRoadmap: FC<GsdRoadmapProps> = ({ cwd, onOpenFile, activeFilePat
               );
             })}
           </div>
+
+          {/* Past milestones */}
+          {pastMilestones && pastMilestones.length > 0 && pastMilestones.map(ms => {
+            const isOpen = !collapsedMilestones.has(ms.version);
+            return (
+              <div key={ms.version} className="rm-past-ms-wrap">
+                <div className="rm-past-ms-header" onClick={() => toggleMilestone(ms.version)}>
+                  <IconChevron open={isOpen} />
+                  <span className="rm-ms-badge">{ms.version}</span>
+                  <span className="rm-past-ms-name">{ms.name}</span>
+                  <span className="rm-past-ms-shipped">✓ {ms.shipped}</span>
+                </div>
+                {isOpen && (
+                  <div className="rm-timeline rm-past-ms-phases">
+                    {[...ms.phases].reverse().map((phase, phaseIdx) => {
+                      const phaseOpen = !collapsedPastPhases.has(phase.number);
+                      const isLast = phaseIdx === ms.phases.length - 1;
+                      return (
+                        <div key={phase.number} className="rm-phase-wrap">
+                          <div className="rm-phase-row" onClick={() => togglePastPhase(phase.number)}>
+                            <div className="rm-phase-track">
+                              <div className="rm-phase-dot" style={{ borderColor: 'var(--border-muted)', background: 'var(--border-muted)' }}>
+                                <IconCheck />
+                              </div>
+                              {!isLast && <div className="rm-phase-line" />}
+                            </div>
+                            <div className="rm-phase-body">
+                              <div className="rm-phase-top">
+                                <span className="rm-phase-num" style={{ color: 'var(--txt-dim)' }}>Phase {phase.number}</span>
+                                <span className="rm-phase-chevron"><IconChevron open={phaseOpen} /></span>
+                              </div>
+                              <div className="rm-phase-name" style={{ color: 'var(--txt-dim)' }}>{phase.name}</div>
+                              <div className="rm-phase-meta" style={{ color: 'var(--txt-dim)' }}>
+                                Complete · {phase.plans.length} plans
+                              </div>
+                            </div>
+                          </div>
+                          {phaseOpen && (
+                            <div className="rm-plans-wrap">
+                              <div className="rm-plans-track"><div className="rm-plans-line" /></div>
+                              <div className="rm-plans-list">
+                                {phase.goal && <div className="rm-phase-goal">{phase.goal}</div>}
+                                {phase.plans.map(plan => (
+                                  <div
+                                    key={plan.id}
+                                    className={`rm-plan-item${plan.planPath ? ' rm-plan-item--link' : ''}${plan.planPath && activeFilePath === plan.planPath ? ' rm-item--active' : ''}`}
+                                    onClick={() => openFile(plan.planPath)}
+                                    title={plan.planPath ? 'Open plan in editor' : undefined}
+                                  >
+                                    <span className="rm-plan-check rm-plan-check--done"><IconCheck /></span>
+                                    <span className="rm-plan-id">{plan.id}</span>
+                                    <span className="rm-plan-name">{plan.name}</span>
+                                  </div>
+                                ))}
+                                {(phase.researchPath || phase.verificationPath) && (
+                                  <div className="rm-phase-docs">
+                                    {phase.researchPath && (
+                                      <button className={`rm-doc-link${activeFilePath === phase.researchPath ? ' rm-item--active' : ''}`} onClick={() => openFile(phase.researchPath)}>Research</button>
+                                    )}
+                                    {phase.verificationPath && (
+                                      <button className={`rm-doc-link${activeFilePath === phase.verificationPath ? ' rm-item--active' : ''}`} onClick={() => openFile(phase.verificationPath)}>Verification</button>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          </>
         )}
       </div>
 

@@ -17,6 +17,7 @@ export function useResize(
     const observer = new ResizeObserver(() => {
       clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
+        if (!el.clientWidth || !el.clientHeight) return;
         fitAddon.fit();
         onResize(terminal.cols, terminal.rows);
       }, 150);

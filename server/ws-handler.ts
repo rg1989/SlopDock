@@ -51,12 +51,12 @@ export function attachWebSocketServer(server: Server): void {
 
           ptyProcess.onData((data: string) => {
             registry.appendBuffer(msg.sessionId, data);
-            send({ type: 'data', data });
+            registry.send(msg.sessionId, { type: 'data', data });
           });
 
           ptyProcess.onExit(({ exitCode }: { exitCode: number }) => {
+            registry.send(msg.sessionId, { type: 'exit', code: exitCode });
             registry.markExited(msg.sessionId, exitCode);
-            send({ type: 'exit', code: exitCode });
           });
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);

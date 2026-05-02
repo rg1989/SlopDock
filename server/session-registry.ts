@@ -88,6 +88,11 @@ class SessionRegistry {
     // Keep the session in registry for replay; start cleanup timer
     this.detach(id);
   }
+
+  send(id: string, msg: ServerMessage): void {
+    const session = this.sessions.get(id);
+    session?.sendFn?.(msg);
+  }
 }
 
 export const registry = new SessionRegistry();
