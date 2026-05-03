@@ -1223,6 +1223,25 @@ app.put('/api/slop-accent', async (req, res) => {
   }
 });
 
+const PALETTE_FILE = path.join(SLOP_DIR, 'accent-palette.json');
+
+app.get('/api/accent-palette', async (_req, res) => {
+  try {
+    const raw = await readFile(PALETTE_FILE, 'utf-8');
+    res.json({ palette: JSON.parse(raw) });
+  } catch {
+    res.json({ palette: [] });
+  }
+});
+
+app.put('/api/accent-palette', async (req, res) => {
+  const { palette } = req.body as { palette?: Array<{ name: string; hex: string }> };
+  if (!Array.isArray(palette)) { res.status(400).json({ error: 'palette array required' }); return; }
+  await mkdir(SLOP_DIR, { recursive: true });
+  await atomicWrite(PALETTE_FILE, JSON.stringify(palette, null, 2));
+  res.json({ ok: true });
+});
+
 app.get('/api/global-settings', async (_req, res) => {
   try {
     const raw = await readFile(SETTINGS_FILE, 'utf-8');
@@ -1392,6 +1411,61 @@ app.put('/api/telegram-token', async (req, res) => {
 app.post('/api/telegram-restart', async (_req, res) => {
   try {
     await restartTelegramTransport();
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e) });
+  }
+});
+
+// MCP server endpoints
+const CLAUDE_SETTINGS_FILE = path.join(os.homedir(), '.claude', 'settings.json');
+
+app.get('/api/mcp-servers', async (req, res) => {
+  let settings: Record<string, unknown> = {};
+  try {
+    const raw = await readFile(CLAUDE_SETTINGS_FILE, 'utf-8');
+    settings = JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    // file missing or parse error — treat as empty
+  }
+  const mcpServers = (settings.mcpServers ?? {}) as Record<string, { command: string; args: string[] }>;
+  const PORT_SELF = Number(process.env.PORT ?? 3000);
+  const result: Record<string, { command: string; args: string[]; status: 'active' | 'registered' }> = {};
+  for (const [name, srv] of Object.entries(mcpServers)) {
+    let status: 'active' | 'registered' = 'registered';
+    if (name === 'slopmop-canvas') {
+      try {
+        const r = await fetch(`http://localhost:${PORT_SELF}/api/canvas/tabs`);
+        if (r.ok) status = 'active';
+      } catch {
+        // not active
+      }
+    }
+    result[name] = { command: srv.command, args: srv.args ?? [], status };
+  }
+  res.json({ servers: result });
+});
+
+app.post('/api/mcp-register-canvas', async (_req, res) => {
+  try {
+    let existing: Record<string, unknown> = {};
+    try {
+      const raw = await readFile(CLAUDE_SETTINGS_FILE, 'utf-8');
+      existing = JSON.parse(raw) as Record<string, unknown>;
+    } catch {
+      // file missing — start fresh
+    }
+    if (!existing.mcpServers || typeof existing.mcpServers !== 'object') {
+      existing.mcpServers = {};
+    }
+    (existing.mcpServers as Record<string, unknown>)['slopmop-canvas'] = {
+      command: 'node',
+      args: [path.resolve(process.cwd(), 'server/canvas-mcp-stdio.js')],
+      env: {},
+    };
+    const tmpFile = CLAUDE_SETTINGS_FILE + '.tmp';
+    await writeFile(tmpFile, JSON.stringify(existing, null, 2), 'utf-8');
+    await rename(tmpFile, CLAUDE_SETTINGS_FILE);
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e) });
