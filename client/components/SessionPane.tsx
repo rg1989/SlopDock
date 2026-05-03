@@ -8,6 +8,7 @@ import { TerminalInput } from './TerminalInput';
 import type { TerminalInputHandle } from './TerminalInput';
 import type { EditorTab } from './EditorTabBar';
 import type { FilePreviewData } from './FilePreview';
+import { ActionBar } from './ActionBar';
 
 export interface SessionPaneActions {
   sendInput: (data: string) => void;
@@ -92,8 +93,27 @@ export function SessionPane({
 
   const localInputRef = useRef<TerminalInputHandle | null>(null);
   const inputRef = composerRef ?? localInputRef;
+  const [picking, setPicking] = useState(false);
 
   const handleReady = useCallback((t: XTerminal) => setTerminal(t), []);
+
+  const handlePickFile = useCallback(async () => {
+    if (picking) return;
+    setPicking(true);
+    try {
+      const res = await fetch('/api/pick-file', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cwd }),
+      });
+      if (res.ok) {
+        const { paths } = await res.json() as { paths: string[] };
+        if (paths.length > 0) session.addAttachments(paths);
+      }
+    } finally {
+      setPicking(false);
+    }
+  }, [picking, cwd, session]);
 
   // Focus the input strip whenever this pane becomes active
   useEffect(() => {
@@ -141,12 +161,19 @@ export function SessionPane({
         <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }} onClick={() => inputRef.current?.focus()}>
           <TerminalComponent onReady={handleReady} sendResize={handleSendResize} visibleKey={visibleKey} accentHex={accentHex} disableStdin={true} />
         </div>
-        <TerminalInput
-          ref={inputRef}
-          sendInput={handleSendInput}
-          connected={session.connected}
-          accentHex={accentHex}
-        />
+        <div className="terminal-input-wrapper">
+          <ActionBar
+            voiceSlot={voiceSlot}
+            onAttach={handlePickFile}
+            picking={picking}
+          />
+          <TerminalInput
+            ref={inputRef}
+            sendInput={handleSendInput}
+            connected={session.connected}
+            accentHex={accentHex}
+          />
+        </div>
       </div>
     </div>
   );
