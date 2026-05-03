@@ -65,6 +65,20 @@ html, body, #root { height: 100%; background: var(--bg); color: var(--txt); font
   flex-shrink: 0;
 }
 
+.terminal-attach-strip {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  z-index: 10;
+}
+
 .terminal-action-bar {
   position: absolute;
   top: 4px;

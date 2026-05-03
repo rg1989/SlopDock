@@ -11,6 +11,7 @@ import type { SlashCommand } from './SlashMenu';
 import type { EditorTab } from './EditorTabBar';
 import type { FilePreviewData } from './FilePreview';
 import { ActionBar } from './ActionBar';
+import { AttachBar } from './AttachBar';
 
 export interface SessionPaneActions {
   sendInput: (data: string) => void;
@@ -186,6 +187,14 @@ export function SessionPane({
           <TerminalComponent onReady={handleReady} sendResize={handleSendResize} visibleKey={visibleKey} accentHex={accentHex} disableStdin={true} />
         </div>
         <div className="terminal-input-wrapper" ref={inputWrapperRef}>
+          {session.attachments.length > 0 && (
+            <div className="terminal-attach-strip">
+              <AttachBar
+                attachments={session.attachments}
+                onRemove={session.removeAttachment}
+              />
+            </div>
+          )}
           <ActionBar
             voiceSlot={voiceSlot}
             onAttach={handlePickFile}
