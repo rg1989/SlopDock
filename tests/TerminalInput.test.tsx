@@ -14,11 +14,15 @@ import { FitAddon as FitAddonMock } from '@xterm/addon-fit';
 import { TerminalInput } from '../client/components/TerminalInput';
 
 let capturedOnData: ((data: string) => void) | null = null;
+let capturedKeyHandler: ((e: KeyboardEvent) => boolean) | null = null;
 const mockDisposable = { dispose: vi.fn() };
 const mockTerminal = {
   onData: vi.fn((cb: (data: string) => void) => {
     capturedOnData = cb;
     return mockDisposable;
+  }),
+  attachCustomKeyEventHandler: vi.fn((h: (e: KeyboardEvent) => boolean) => {
+    capturedKeyHandler = h;
   }),
   open: vi.fn(),
   focus: vi.fn(),
@@ -34,8 +38,13 @@ describe('TerminalInput', () => {
 
   beforeEach(() => {
     capturedOnData = null;
+    capturedKeyHandler = null;
     mockSend = vi.fn();
     mockTerminal.onData.mockClear();
+    mockTerminal.attachCustomKeyEventHandler.mockClear();
+    mockTerminal.attachCustomKeyEventHandler.mockImplementation((h: (e: KeyboardEvent) => boolean) => {
+      capturedKeyHandler = h;
+    });
     mockTerminal.open.mockClear();
     mockTerminal.focus.mockClear();
     mockTerminal.dispose.mockClear();
@@ -90,5 +99,46 @@ describe('TerminalInput', () => {
     const { container } = render(<TerminalInput sendInput={mockSend} connected={true} />);
     const el = container.querySelector('.terminal-input-strip');
     expect(el).not.toBeNull();
+  });
+
+  it('SLASH-01: onSlashOpen is called when "/" is typed at empty input', async () => {
+    const onSlashOpen = vi.fn();
+    render(<TerminalInput sendInput={mockSend} connected={true} onSlashOpen={onSlashOpen} />);
+    await waitFor(() => {
+      expect(capturedKeyHandler).not.toBeNull();
+    });
+    capturedKeyHandler!({ type: 'keydown', key: '/' } as KeyboardEvent);
+    expect(onSlashOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it('SLASH-01: onSlashClose is called when Escape is pressed while slash menu is open', async () => {
+    const onSlashOpen = vi.fn();
+    const onSlashClose = vi.fn();
+    render(<TerminalInput sendInput={mockSend} connected={true} onSlashOpen={onSlashOpen} onSlashClose={onSlashClose} />);
+    await waitFor(() => {
+      expect(capturedKeyHandler).not.toBeNull();
+    });
+    capturedKeyHandler!({ type: 'keydown', key: '/' } as KeyboardEvent);
+    capturedKeyHandler!({ type: 'keydown', key: 'Escape' } as KeyboardEvent);
+    expect(onSlashClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('SLASH-02: handler returns false for ArrowUp when slash menu is open (suppresses xterm)', async () => {
+    render(<TerminalInput sendInput={mockSend} connected={true} onSlashOpen={vi.fn()} />);
+    await waitFor(() => {
+      expect(capturedKeyHandler).not.toBeNull();
+    });
+    capturedKeyHandler!({ type: 'keydown', key: '/' } as KeyboardEvent);
+    const result = capturedKeyHandler!({ type: 'keydown', key: 'ArrowUp' } as KeyboardEvent);
+    expect(result).toBe(false);
+  });
+
+  it('SLASH-01: handler returns true for "/" (allows through to xterm for display)', async () => {
+    render(<TerminalInput sendInput={mockSend} connected={true} onSlashOpen={vi.fn()} />);
+    await waitFor(() => {
+      expect(capturedKeyHandler).not.toBeNull();
+    });
+    const result = capturedKeyHandler!({ type: 'keydown', key: '/' } as KeyboardEvent);
+    expect(result).toBe(true);
   });
 });
