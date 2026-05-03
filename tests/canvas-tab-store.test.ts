@@ -1,9 +1,8 @@
-// @ts-expect-error — module not yet created (RED phase)
 import { createTab, updateTab, lockTab, unlockTab, closeTab, getTab, getAllTabs, initCanvasStore } from '../server/canvas-tab-store.js';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import path from 'path';
 import os from 'os';
-import { mkdtemp, readFile } from 'fs/promises';
+import { mkdtemp } from 'fs/promises';
 
 vi.mock('../server/canvas-tab-sse.js', () => ({
   notifyCanvasTabsUpdated: vi.fn(),

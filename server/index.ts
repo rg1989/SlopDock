@@ -21,6 +21,8 @@ import {
   notifyLiveCanvasUpdated,
   isProjectRelativeLiveCanvasPath,
 } from './live-canvas-sse.js';
+import { initCanvasStore, createTab, updateTab, lockTab, unlockTab, closeTab, getTab, getAllTabs } from './canvas-tab-store.js';
+import { registerCanvasTabSseClient } from './canvas-tab-sse.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -1472,6 +1474,69 @@ app.post('/api/mcp-register-canvas', async (_req, res) => {
   }
 });
 
+// Canvas tab REST + SSE routes
+app.get('/api/canvas/events', (req, res) => {
+  registerCanvasTabSseClient(req, res);
+});
+
+app.get('/api/canvas/tabs', (_req, res) => {
+  res.json({ tabs: getAllTabs() });
+});
+
+app.post('/api/canvas/tabs', (req, res) => {
+  const { title } = req.body as { title?: string };
+  if (!title || typeof title !== 'string') {
+    res.status(400).json({ error: 'title required' });
+    return;
+  }
+  const tab = createTab(title);
+  if (tab === null) {
+    res.status(422).json({ error: 'tab limit reached' });
+    return;
+  }
+  res.status(201).json(tab);
+});
+
+app.get('/api/canvas/tabs/:id', (req, res) => {
+  const tab = getTab(req.params.id);
+  if (!tab) { res.status(404).json({ error: 'tab not found' }); return; }
+  res.json(tab);
+});
+
+app.put('/api/canvas/tabs/:id', (req, res) => {
+  const tab = getTab(req.params.id);
+  if (!tab) { res.status(404).json({ error: 'tab not found' }); return; }
+  const { html } = req.body as { html?: string };
+  if (typeof html !== 'string') {
+    res.status(400).json({ error: 'html required' });
+    return;
+  }
+  updateTab(req.params.id, html);
+  res.json(getTab(req.params.id));
+});
+
+app.delete('/api/canvas/tabs/:id', (req, res) => {
+  const tab = getTab(req.params.id);
+  if (!tab) { res.status(404).json({ error: 'tab not found' }); return; }
+  closeTab(req.params.id);
+  res.status(204).end();
+});
+
+app.post('/api/canvas/tabs/:id/lock', (req, res) => {
+  const tab = getTab(req.params.id);
+  if (!tab) { res.status(404).json({ error: 'tab not found' }); return; }
+  const { reason } = req.body as { reason?: string };
+  lockTab(req.params.id, reason);
+  res.json({ ok: true });
+});
+
+app.post('/api/canvas/tabs/:id/unlock', (req, res) => {
+  const tab = getTab(req.params.id);
+  if (!tab) { res.status(404).json({ error: 'tab not found' }); return; }
+  unlockTab(req.params.id);
+  res.json({ ok: true });
+});
+
 // Attach WebSocket server
 attachWebSocketServer(server);
 
@@ -1479,6 +1544,7 @@ const PORT = Number(process.env.PORT ?? 3000);
 server.listen(PORT, () => {
   console.log(`SlopMop server listening on :${PORT}`);
   // Start Piper TTS and probe Whisper STT in background — non-blocking
+  initCanvasStore(process.cwd()).catch(() => {});
   initPiper().catch(() => {});
   checkWhisper().catch(() => {});
   setupAutoBackupSchedule().then(() => autoBackupVault()).catch(() => {});
