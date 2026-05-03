@@ -6,24 +6,18 @@ import type { FitAddon } from '@xterm/addon-fit';
 // Mock the ResizeObserver (jsdom doesn't implement it)
 let resizeObserverCallback: ResizeObserverCallback | null = null;
 let mockObservedElement: Element | null = null;
-let mockDisconnected = false;
 
 const MockResizeObserver = vi.fn((callback: ResizeObserverCallback) => {
   resizeObserverCallback = callback;
   return {
-    observe: vi.fn((el: Element) => {
-      mockObservedElement = el;
-    }),
-    disconnect: vi.fn(() => {
-      mockDisconnected = true;
-    }),
+    observe: vi.fn((el: Element) => { mockObservedElement = el; }),
+    disconnect: vi.fn(),
     unobserve: vi.fn(),
   };
 });
 
 vi.stubGlobal('ResizeObserver', MockResizeObserver);
 
-// Mock @xterm/addon-fit
 vi.mock('@xterm/addon-fit', () => ({
   FitAddon: vi.fn().mockImplementation(() => ({
     fit: vi.fn(),
@@ -31,23 +25,15 @@ vi.mock('@xterm/addon-fit', () => ({
   })),
 }));
 
-// Mock @xterm/xterm
 vi.mock('@xterm/xterm', () => ({
   Terminal: vi.fn().mockImplementation(() => ({
-    cols: 80,
-    rows: 24,
-    open: vi.fn(),
-    loadAddon: vi.fn(),
-    dispose: vi.fn(),
-    write: vi.fn(),
-    onData: vi.fn(),
+    cols: 80, rows: 24,
+    open: vi.fn(), loadAddon: vi.fn(), dispose: vi.fn(), write: vi.fn(), onData: vi.fn(),
   })),
 }));
 
 vi.mock('@xterm/addon-webgl', () => ({
-  WebglAddon: vi.fn().mockImplementation(() => ({
-    onContextLoss: vi.fn(),
-  })),
+  WebglAddon: vi.fn().mockImplementation(() => ({ onContextLoss: vi.fn() })),
 }));
 
 import { useResize } from '../client/hooks/useResize';
@@ -64,17 +50,11 @@ describe('useResize', () => {
     vi.useFakeTimers();
     resizeObserverCallback = null;
     mockObservedElement = null;
-    mockDisconnected = false;
     MockResizeObserver.mockClear();
 
     mockTerminal = {
-      cols: 80,
-      rows: 24,
-      open: vi.fn(),
-      loadAddon: vi.fn(),
-      dispose: vi.fn(),
-      write: vi.fn(),
-      onData: vi.fn(),
+      cols: 80, rows: 24,
+      open: vi.fn(), loadAddon: vi.fn(), dispose: vi.fn(), write: vi.fn(), onData: vi.fn(),
     } as unknown as Terminal;
 
     mockFitAddon = {
@@ -96,10 +76,17 @@ describe('useResize', () => {
     vi.useRealTimers();
   });
 
-  it('fires onResize exactly once after 150ms when ResizeObserver fires', () => {
-    renderHook(() =>
-      useResize(containerRef, terminalRef, fitAddonRef, onResize)
-    );
+  it('calls fitAddon.fit() immediately when ResizeObserver fires', () => {
+    renderHook(() => useResize(containerRef, terminalRef, fitAddonRef, onResize));
+
+    resizeObserverCallback!([], {} as ResizeObserver);
+
+    // fit() is synchronous — fires immediately
+    expect(mockFitAddon.fit).toHaveBeenCalledTimes(1);
+  });
+
+  it('debounces onResize — fires 150ms after observer callback', () => {
+    renderHook(() => useResize(containerRef, terminalRef, fitAddonRef, onResize));
 
     resizeObserverCallback!([], {} as ResizeObserver);
 
@@ -110,24 +97,11 @@ describe('useResize', () => {
     expect(onResize).toHaveBeenCalledTimes(1);
   });
 
-  it('does NOT fire before 150ms debounce window elapses', () => {
-    renderHook(() =>
-      useResize(containerRef, terminalRef, fitAddonRef, onResize)
-    );
-
-    resizeObserverCallback!([], {} as ResizeObserver);
-
-    vi.advanceTimersByTime(149);
-    expect(onResize).not.toHaveBeenCalled();
-  });
-
   it('passes terminal.cols and terminal.rows to onResize', () => {
     const bigTerminal = { ...mockTerminal, cols: 120, rows: 30 } as Terminal;
     const bigTerminalRef = { current: bigTerminal } as React.RefObject<Terminal | null>;
 
-    renderHook(() =>
-      useResize(containerRef, bigTerminalRef, fitAddonRef, onResize)
-    );
+    renderHook(() => useResize(containerRef, bigTerminalRef, fitAddonRef, onResize));
 
     resizeObserverCallback!([], {} as ResizeObserver);
     vi.advanceTimersByTime(150);
@@ -136,9 +110,7 @@ describe('useResize', () => {
   });
 
   it('debounces multiple rapid fires — only calls onResize once', () => {
-    renderHook(() =>
-      useResize(containerRef, terminalRef, fitAddonRef, onResize)
-    );
+    renderHook(() => useResize(containerRef, terminalRef, fitAddonRef, onResize));
 
     resizeObserverCallback!([], {} as ResizeObserver);
     vi.advanceTimersByTime(100);
@@ -147,6 +119,19 @@ describe('useResize', () => {
     resizeObserverCallback!([], {} as ResizeObserver);
     vi.advanceTimersByTime(350);
 
+    expect(onResize).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls fit() on each rapid fire (no debounce for fit)', () => {
+    renderHook(() => useResize(containerRef, terminalRef, fitAddonRef, onResize));
+
+    resizeObserverCallback!([], {} as ResizeObserver);
+    resizeObserverCallback!([], {} as ResizeObserver);
+    resizeObserverCallback!([], {} as ResizeObserver);
+    vi.advanceTimersByTime(200);
+
+    // fit called 3 times (once per observer callback), onResize debounced to 1
+    expect(mockFitAddon.fit).toHaveBeenCalledTimes(3);
     expect(onResize).toHaveBeenCalledTimes(1);
   });
 
@@ -163,25 +148,22 @@ describe('useResize', () => {
     expect(observerInstance.disconnect).toHaveBeenCalledTimes(1);
   });
 
-  it('does not call onResize when terminal ref is null', () => {
+  it('does not call fit or onResize when terminal ref is null', () => {
     const nullTerminalRef = { current: null } as React.RefObject<Terminal | null>;
 
-    renderHook(() =>
-      useResize(containerRef, nullTerminalRef, fitAddonRef, onResize)
-    );
+    renderHook(() => useResize(containerRef, nullTerminalRef, fitAddonRef, onResize));
 
     resizeObserverCallback!([], {} as ResizeObserver);
     vi.advanceTimersByTime(150);
 
+    expect(mockFitAddon.fit).not.toHaveBeenCalled();
     expect(onResize).not.toHaveBeenCalled();
   });
 
-  it('does not call onResize when fitAddon ref is null', () => {
+  it('does not call fit or onResize when fitAddon ref is null', () => {
     const nullFitAddonRef = { current: null } as React.RefObject<FitAddon | null>;
 
-    renderHook(() =>
-      useResize(containerRef, terminalRef, nullFitAddonRef, onResize)
-    );
+    renderHook(() => useResize(containerRef, terminalRef, nullFitAddonRef, onResize));
 
     resizeObserverCallback!([], {} as ResizeObserver);
     vi.advanceTimersByTime(150);

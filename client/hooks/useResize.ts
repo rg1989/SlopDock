@@ -15,13 +15,18 @@ export function useResize(
     if (!el) return;
 
     const observer = new ResizeObserver(() => {
+      const terminal = terminalRef.current;
+      const fitAddon = fitAddonRef.current;
+      if (!el.clientWidth || !el.clientHeight || !terminal || !fitAddon) return;
+
+      // Refit immediately — keeps rendering correct during drag without waiting for debounce
+      try { fitAddon.fit(); } catch { /* ignore mid-dispose errors */ }
+
+      // Debounce PTY notification to avoid flooding the server during drag
       clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
-        const terminal = terminalRef.current;
-        const fitAddon = fitAddonRef.current;
-        if (!el.clientWidth || !el.clientHeight || !terminal || !fitAddon) return;
-        fitAddon.fit();
-        onResize(terminal.cols, terminal.rows);
+        const t = terminalRef.current;
+        if (t) onResize(t.cols, t.rows);
       }, 150);
     });
 

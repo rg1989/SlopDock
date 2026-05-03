@@ -79,13 +79,13 @@ export function Terminal({ onReady, sendResize, visibleKey, accentHex, disableSt
         // WebGL not available — DOM renderer fallback
       }
 
+      // Set refs before open so ResizeObserver callback can read them immediately
+      terminalRef.current = terminal;
+      fitAddonRef.current = fitAddon;
+
       if (containerRef.current) {
         terminal.open(containerRef.current);
         terminal.focus();
-        requestAnimationFrame(() => {
-          const el = containerRef.current;
-          if (el?.clientWidth && el.clientHeight) fitAddon.fit();
-        });
       }
 
       // Inject scrollbar override after xterm opens — static CSS loses the cascade
@@ -102,10 +102,18 @@ export function Terminal({ onReady, sendResize, visibleKey, accentHex, disableSt
         document.head.appendChild(s);
       }
 
-      terminalRef.current = terminal;
-      fitAddonRef.current = fitAddon;
-
       onReady(terminal);
+
+      // After layout settles: fit and sync PTY size. Covers the case where the session
+      // is already active on load so visibleKey never increments and sendResize never fires.
+      requestAnimationFrame(() => {
+        if (cancelled) return;
+        const el = containerRef.current;
+        if (el?.clientWidth && el.clientHeight) {
+          fitAddon.fit();
+          sendResize(terminal.cols, terminal.rows);
+        }
+      });
     }
 
     init();
