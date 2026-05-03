@@ -6,6 +6,16 @@ interface McpServer {
   status: 'active' | 'registered';
 }
 
+const KNOWN_DESCRIPTIONS: Record<string, string> = {
+  'slopmop-canvas': 'Canvas tabs for Claude',
+};
+
+function describeServer(name: string, srv: McpServer): string {
+  if (KNOWN_DESCRIPTIONS[name]) return KNOWN_DESCRIPTIONS[name];
+  const base = srv.args?.length ? srv.args[srv.args.length - 1].split('/').pop() ?? name : name;
+  return base.replace(/[-_.]/g, ' ').replace(/\.[^.]+$/, '');
+}
+
 interface McpConnectionsModalProps {
   onClose: () => void;
 }
@@ -59,8 +69,10 @@ export function McpConnectionsModal({ onClose }: McpConnectionsModalProps) {
           {!loading && Object.entries(servers).map(([name, srv]) => (
             <div key={name} className="mcp-server-row">
               <span className={`mcp-status-dot mcp-status-dot--${srv.status}`} />
-              <span className="mcp-server-name">{name}</span>
-              <span className="mcp-server-cmd">{srv.command} {srv.args?.join(' ')}</span>
+              <div className="mcp-server-info">
+                <span className="mcp-server-name">{name}</span>
+                <span className="mcp-server-desc">{describeServer(name, srv)}</span>
+              </div>
               <button
                 className="mcp-remove-btn"
                 onClick={() => handleRemove(name)}

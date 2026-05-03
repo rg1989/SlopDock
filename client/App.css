@@ -4413,20 +4413,23 @@ html, body, #root { height: 100%; background: var(--bg); color: var(--txt); font
   border-bottom: 1px solid var(--border);
   font-size: 12px;
 }
+.mcp-server-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
 .mcp-server-name {
   font-size: 13px;
   color: var(--txt-bright);
   font-family: monospace;
-  min-width: 140px;
 }
-.mcp-server-cmd {
+.mcp-server-desc {
   color: var(--txt-sub);
   font-size: 11px;
   font-family: monospace;
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.4;
 }
 .mcp-status-dot {
   width: 8px;
