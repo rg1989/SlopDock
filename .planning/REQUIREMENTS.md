@@ -10,10 +10,10 @@
 
 ### Terminal Input
 
-- [ ] **TINPUT-01**: User can type and send messages via a real xterm.js terminal input (not a textarea)
-- [ ] **TINPUT-02**: User can navigate Claude's permission menus with arrow keys and press Enter to confirm
-- [ ] **TINPUT-03**: User can send Ctrl+C, Ctrl+D, Tab and other terminal control sequences directly
-- [ ] **TINPUT-04**: Terminal input is a fixed small height strip (~3–4 lines) at the bottom of the session pane
+- [x] **TINPUT-01**: User can type and send messages via a real xterm.js terminal input (not a textarea)
+- [x] **TINPUT-02**: User can navigate Claude's permission menus with arrow keys and press Enter to confirm
+- [x] **TINPUT-03**: User can send Ctrl+C, Ctrl+D, Tab and other terminal control sequences directly
+- [x] **TINPUT-04**: Terminal input is a fixed small height strip (~3–4 lines) at the bottom of the session pane
 
 ### Floating Action Bar
 
@@ -59,10 +59,10 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TINPUT-01 | Phase 15 | Pending |
-| TINPUT-02 | Phase 15 | Pending |
-| TINPUT-03 | Phase 15 | Pending |
-| TINPUT-04 | Phase 15 | Pending |
+| TINPUT-01 | Phase 15 | Complete |
+| TINPUT-02 | Phase 15 | Complete |
+| TINPUT-03 | Phase 15 | Complete |
+| TINPUT-04 | Phase 15 | Complete |
 | ACTION-01 | Phase 16 | Pending |
 | ACTION-02 | Phase 16 | Pending |
 | SLASH-01 | Phase 16 | Pending |
