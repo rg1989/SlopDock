@@ -1486,18 +1486,13 @@ app.get('/api/mcp-servers', async (req, res) => {
 });
 
 app.post('/api/mcp-register-canvas', async (_req, res) => {
-  const entry = { command: 'node', args: [path.resolve(process.cwd(), 'server/canvas-mcp-stdio.js')] };
+  const scriptPath = path.resolve(process.cwd(), 'server/canvas-mcp-stdio.js');
   try {
-    // Write to Desktop app config (what Claude reads at session startup)
-    const desktop = await readMcpConfig(CLAUDE_DESKTOP_CONFIG);
-    if (!desktop.mcpServers || typeof desktop.mcpServers !== 'object') desktop.mcpServers = {};
-    (desktop.mcpServers as Record<string, unknown>)['slopmop-canvas'] = entry;
-    await writeMcpConfig(CLAUDE_DESKTOP_CONFIG, desktop);
-    // Also keep CLI config in sync
-    const cli = await readMcpConfig(CLAUDE_SETTINGS_FILE);
-    if (!cli.mcpServers || typeof cli.mcpServers !== 'object') cli.mcpServers = {};
-    (cli.mcpServers as Record<string, unknown>)['slopmop-canvas'] = { ...entry, env: {} };
-    await writeMcpConfig(CLAUDE_SETTINGS_FILE, cli);
+    // Use `claude mcp add` — the authoritative registration path Claude Code actually reads
+    await execFileAsync('claude', ['mcp', 'add', '--scope', 'user', 'slopmop-canvas', 'node', scriptPath]).catch(() =>
+      // Fallback: older claude versions without --scope flag
+      execFileAsync('claude', ['mcp', 'add', 'slopmop-canvas', 'node', scriptPath])
+    );
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e) });
@@ -1508,11 +1503,9 @@ app.delete('/api/mcp-remove/:name', async (req, res) => {
   const { name } = req.params;
   if (!name) { res.status(400).json({ ok: false, error: 'name required' }); return; }
   try {
-    for (const file of [CLAUDE_DESKTOP_CONFIG, CLAUDE_SETTINGS_FILE]) {
-      const cfg = await readMcpConfig(file);
-      if (cfg.mcpServers && typeof cfg.mcpServers === 'object') delete (cfg.mcpServers as Record<string, unknown>)[name];
-      await writeMcpConfig(file, cfg);
-    }
+    await execFileAsync('claude', ['mcp', 'remove', '--scope', 'user', name]).catch(() =>
+      execFileAsync('claude', ['mcp', 'remove', name])
+    );
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e) });
