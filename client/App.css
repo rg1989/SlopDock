@@ -61,12 +61,9 @@ html, body, #root { height: 100%; background: var(--bg); color: var(--txt); font
 }
 
 .terminal-input-wrapper {
-  position: relative;
+  height: 0;
+  overflow: hidden;
   flex-shrink: 0;
-}
-
-.terminal-input-strip .xterm-cursor {
-  display: none !important;
 }
 
 .terminal-attach-strip {
@@ -86,8 +83,9 @@ html, body, #root { height: 100%; background: var(--bg); color: var(--txt); font
 
 .terminal-action-bar {
   position: absolute;
-  top: 4px;
-  right: 8px;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: 4px;
