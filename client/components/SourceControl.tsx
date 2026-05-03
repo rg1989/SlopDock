@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import type { GitFileEntry, GitStatus } from '../hooks/useFileTree';
 import { FileIcon } from './FileTree';
+import { useContextMenu } from '../hooks/useContextMenu';
 
 interface SourceControlProps {
   cwd: string;
@@ -75,6 +76,85 @@ function DiscardModal({ paths, onConfirm, onCancel }: DiscardModalProps) {
   );
 }
 
+interface SectionFileRowProps {
+  file: GitFileEntry;
+  section: 'staged' | 'unstaged';
+  isSelected: boolean;
+  cwd: string;
+  onFileClick: (file: GitFileEntry, section: 'staged' | 'unstaged', e: React.MouseEvent) => void;
+  onAttach?: (path: string) => void;
+  onSingleStage?: (path: string) => void;
+  onSingleUnstage?: (path: string) => void;
+  onSingleDiscard?: (path: string) => void;
+  clickCountRef: React.MutableRefObject<Record<string, { count: number; timer: ReturnType<typeof setTimeout> | null }>>;
+}
+
+const CtxIconStage = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12"/>
+  </svg>
+);
+
+const CtxIconUnstage = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 7v6h6"/>
+    <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>
+  </svg>
+);
+
+const CtxIconDiscard = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="15" y1="9" x2="9" y2="15"/>
+    <line x1="9" y1="9" x2="15" y2="15"/>
+  </svg>
+);
+
+function SectionFileRow({
+  file, section, isSelected, cwd,
+  onFileClick, onAttach,
+  onSingleStage, onSingleUnstage, onSingleDiscard,
+  clickCountRef,
+}: SectionFileRowProps) {
+  const name = file.path.split('/').pop() ?? file.path;
+
+  const ctxItems = section === 'staged'
+    ? [{ label: 'Unstage', icon: <CtxIconUnstage />, action: () => onSingleUnstage?.(file.path) }]
+    : [
+        { label: 'Stage', icon: <CtxIconStage />, action: () => onSingleStage?.(file.path) },
+        { label: 'Discard', icon: <CtxIconDiscard />, variant: 'danger' as const, dividerAbove: true, action: () => onSingleDiscard?.(file.path) },
+      ];
+
+  const ctxProps = useContextMenu(`sc:${section}:${file.path}`, ctxItems);
+
+  return (
+    <li
+      className={`sc-file${isSelected ? ' sc-file--selected' : ''}`}
+      title={`${file.path} — triple-click to add as context`}
+      onClick={e => {
+        const c = clickCountRef.current[file.path] ?? { count: 0, timer: null };
+        c.count++;
+        if (c.timer) clearTimeout(c.timer);
+        if (c.count >= 3) {
+          c.count = 0;
+          onAttach?.(`${cwd}/${file.path}`);
+        } else {
+          onFileClick(file, section, e);
+          c.timer = setTimeout(() => { c.count = 0; }, 400);
+        }
+        clickCountRef.current[file.path] = c;
+      }}
+      {...ctxProps}
+    >
+      <FileIcon name={name} />
+      <span className="sc-filename">{name}</span>
+      <span className={`sc-status sc-status--${file.status.toLowerCase()}`} title={statusTitle(file.status)}>
+        {statusLabel(file.status)}
+      </span>
+    </li>
+  );
+}
+
 interface SectionProps {
   title: string;
   count: number;
@@ -89,6 +169,9 @@ interface SectionProps {
   onStageSelected?: () => void;
   onUnstageSelected?: () => void;
   onDiscardSelected?: () => void;
+  onSingleStage?: (path: string) => void;
+  onSingleUnstage?: (path: string) => void;
+  onSingleDiscard?: (path: string) => void;
   actionLoading: boolean;
 }
 
@@ -96,6 +179,7 @@ function Section({
   title, count, files, selected, section, cwd,
   onFileClick, onAttach, onStageAll, onUnstageAll,
   onStageSelected, onUnstageSelected, onDiscardSelected,
+  onSingleStage, onSingleUnstage, onSingleDiscard,
   actionLoading,
 }: SectionProps) {
   const [collapsed, setCollapsed] = useState(section === 'staged');
@@ -156,36 +240,21 @@ function Section({
             </div>
           )}
           <ul className="sc-file-list">
-            {files.map(file => {
-              const name = file.path.split('/').pop() ?? file.path;
-              const isSelected = selected.has(file.path);
-              return (
-                <li
-                  key={file.path}
-                  className={`sc-file${isSelected ? ' sc-file--selected' : ''}`}
-                  title={`${file.path} — triple-click to add as context`}
-                  onClick={e => {
-                    const c = clickCountRef.current[file.path] ?? { count: 0, timer: null };
-                    c.count++;
-                    if (c.timer) clearTimeout(c.timer);
-                    if (c.count >= 3) {
-                      c.count = 0;
-                      onAttach?.(`${cwd}/${file.path}`);
-                    } else {
-                      onFileClick(file, section, e);
-                      c.timer = setTimeout(() => { c.count = 0; }, 400);
-                    }
-                    clickCountRef.current[file.path] = c;
-                  }}
-                >
-                  <FileIcon name={name} />
-                  <span className="sc-filename">{name}</span>
-                  <span className={`sc-status sc-status--${file.status.toLowerCase()}`} title={statusTitle(file.status)}>
-                    {statusLabel(file.status)}
-                  </span>
-                </li>
-              );
-            })}
+            {files.map(file => (
+              <SectionFileRow
+                key={file.path}
+                file={file}
+                section={section}
+                isSelected={selected.has(file.path)}
+                cwd={cwd}
+                onFileClick={onFileClick}
+                onAttach={onAttach}
+                onSingleStage={onSingleStage}
+                onSingleUnstage={onSingleUnstage}
+                onSingleDiscard={onSingleDiscard}
+                clickCountRef={clickCountRef}
+              />
+            ))}
           </ul>
         </>
       )}
@@ -310,6 +379,20 @@ export function SourceControl({ cwd, gitStatus, onRefresh, onOpenDiff, onAttach 
     await fetch('/api/git-discard', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cwd, paths }) });
     setSelectedUnstaged(new Set());
   });
+
+  const singleStage = useCallback((path: string) => runAction(async () => {
+    await fetch('/api/git-stage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cwd, paths: [path] }) });
+  }), [cwd]);
+
+  const singleUnstage = useCallback((path: string) => runAction(async () => {
+    await fetch('/api/git-unstage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cwd, paths: [path] }) });
+  }), [cwd]);
+
+  const singleDiscard = useCallback((path: string) => {
+    const isUntracked = gitStatus.unstaged.find(f => f.path === path)?.status === '?';
+    if (isUntracked) setDiscardModal({ paths: [path] });
+    else performDiscard([path]);
+  }, [gitStatus.unstaged]);
 
   const handleCommit = async () => {
     if (!commitMsg.trim() || !gitStatus.staged.length) return;
@@ -523,6 +606,7 @@ export function SourceControl({ cwd, gitStatus, onRefresh, onOpenDiff, onAttach 
         onAttach={onAttach}
         onUnstageAll={unstageAll}
         onUnstageSelected={unstageSelected}
+        onSingleUnstage={singleUnstage}
         actionLoading={actionLoading || commitLoading}
       />
 
@@ -538,6 +622,8 @@ export function SourceControl({ cwd, gitStatus, onRefresh, onOpenDiff, onAttach 
         onStageAll={stageAll}
         onStageSelected={stageSelected}
         onDiscardSelected={discardSelected}
+        onSingleStage={singleStage}
+        onSingleDiscard={singleDiscard}
         actionLoading={actionLoading || commitLoading}
       />
     </div>

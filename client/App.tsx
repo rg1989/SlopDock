@@ -394,6 +394,13 @@ export default function App() {
 
   // ── Context menu (global registry listener) ──────────────────────────────────
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
+  const ctxTargetRef = useRef<HTMLElement | null>(null);
+
+  const closeCtxMenu = useCallback(() => {
+    ctxTargetRef.current?.classList.remove('ctx-target--active');
+    ctxTargetRef.current = null;
+    setCtxMenu(null);
+  }, []);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -404,6 +411,9 @@ export default function App() {
       const reg = contextMenuLookup(id);
       if (!reg) return;
       e.preventDefault();
+      ctxTargetRef.current?.classList.remove('ctx-target--active');
+      el.classList.add('ctx-target--active');
+      ctxTargetRef.current = el;
       setCtxMenu({ x: e.clientX, y: e.clientY, items: reg.items });
     };
     document.addEventListener('contextmenu', handler);
@@ -805,7 +815,7 @@ export default function App() {
           x={ctxMenu.x}
           y={ctxMenu.y}
           items={ctxMenu.items}
-          onClose={() => setCtxMenu(null)}
+          onClose={closeCtxMenu}
         />
       )}
     </div>

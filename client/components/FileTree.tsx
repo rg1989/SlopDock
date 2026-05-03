@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback, createContext, useContext } from 'react';
 import { ConfirmModal } from './ConfirmModal';
+import { useContextMenu } from '../hooks/useContextMenu';
 
 // ---------------------------------------------------------------------------
 // File type icons (inline SVG, sized 14×14, verticalAlign middle)
@@ -138,11 +139,14 @@ interface FTCtx {
   setCreating: (v: { parentPath: string; type: 'file' | 'dir' } | null) => void;
   newName: string;
   setNewName: (v: string) => void;
+  renamePath: string | null;
+  setRenamePath: (v: string | null) => void;
 }
 
 const FileTreeContext = createContext<FTCtx>({
   cwd: null, onRefresh: () => {}, pendingDelete: null, setPendingDelete: () => {},
   creating: null, setCreating: () => {}, newName: '', setNewName: () => {},
+  renamePath: null, setRenamePath: () => {},
 });
 
 // ---------------------------------------------------------------------------
@@ -169,6 +173,7 @@ interface FileTreeNodeProps {
   selected: Set<string>;
   onPreview: (path: string) => void;
   onOpen?: (path: string) => void;
+  onOpenEdit?: (path: string) => void;
   onAttach?: (path: string) => void;
   changedPaths: Set<string>;
   mode: 'all' | 'changes';
@@ -230,6 +235,77 @@ function CreatingInput({ depth }: { depth: number }) {
 }
 
 // ---------------------------------------------------------------------------
+// Context menu icons (12×12, stroke-based)
+// ---------------------------------------------------------------------------
+
+const CtxIconRename = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+  </svg>
+);
+const CtxIconEdit = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 20h9"/>
+    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+  </svg>
+);
+const CtxIconReveal = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+    <circle cx="14" cy="14" r="2.5"/>
+    <line x1="16" y1="16" x2="18.5" y2="18.5"/>
+  </svg>
+);
+const CtxIconTrash = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="3 6 5 6 21 6"/>
+    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+    <path d="M10 11v6M14 11v6"/>
+    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+  </svg>
+);
+
+// ---------------------------------------------------------------------------
+// RenameInlineInput — inline rename field that replaces the node name
+// ---------------------------------------------------------------------------
+
+function RenameInlineInput({ node }: { node: FileNode }) {
+  const ctx = useContext(FileTreeContext);
+  const [value, setValue] = useState(node.name);
+
+  const submit = async () => {
+    const trimmed = value.trim();
+    if (!trimmed || trimmed === node.name) { ctx.setRenamePath(null); return; }
+    const dir = node.path.split('/').slice(0, -1).join('/');
+    const newPath = dir + '/' + trimmed;
+    try {
+      await fetch('/api/fs/rename', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from: node.path, to: newPath }),
+      });
+      ctx.onRefresh();
+    } catch { /* ignore */ }
+    ctx.setRenamePath(null);
+  };
+
+  return (
+    <input
+      className="ft-name-input"
+      autoFocus
+      value={value}
+      onChange={e => setValue(e.target.value)}
+      onKeyDown={e => {
+        if (e.key === 'Enter') { void submit(); }
+        if (e.key === 'Escape') ctx.setRenamePath(null);
+      }}
+      onBlur={() => ctx.setRenamePath(null)}
+      onClick={e => e.stopPropagation()}
+    />
+  );
+}
+
+// ---------------------------------------------------------------------------
 // FileTreeNode
 // ---------------------------------------------------------------------------
 
@@ -238,6 +314,7 @@ function FileTreeNode({
   selected,
   onPreview,
   onOpen,
+  onOpenEdit,
   onAttach,
   changedPaths,
   mode,
@@ -281,6 +358,18 @@ function FileTreeNode({
 
   if (!showHiddenFiles && node.hidden) return null;
 
+  const dirCtxProps = useContextMenu(`ft:${node.path}`, node.type === 'dir' ? [
+    { label: 'Rename', icon: <CtxIconRename />, action: () => ctx.setRenamePath(node.path) },
+    { label: 'Delete', icon: <CtxIconTrash />, variant: 'danger', dividerAbove: true, action: () => ctx.setPendingDelete({ path: node.path, type: 'dir', name: node.name }) },
+  ] : [
+    { label: 'Rename', icon: <CtxIconRename />, action: () => ctx.setRenamePath(node.path) },
+    { label: 'Edit', icon: <CtxIconEdit />, action: () => onOpenEdit?.(node.path) },
+    { label: 'Open Containing Folder', icon: <CtxIconReveal />, action: () => {
+      fetch('/api/fs/reveal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: node.path }) });
+    }},
+    { label: 'Delete', icon: <CtxIconTrash />, variant: 'danger', dividerAbove: true, action: () => ctx.setPendingDelete({ path: node.path, type: 'file', name: node.name }) },
+  ]);
+
   if (node.type === 'dir') {
     if (mode === 'changes' && !hasChangedDescendant(node, changedPaths)) return null;
     if (searchQuery && !nodeMatchesSearch(node, searchQuery)) return null;
@@ -289,6 +378,7 @@ function FileTreeNode({
         <div
           className="ft-dir-header"
           style={{ paddingLeft: `${8 + depth * 12}px` }}
+          {...dirCtxProps}
         >
           <span className="ft-caret" onClick={() => setOpen(prev => !prev)}>{open ? '▾' : '▸'}</span>
           {node.hidden && <EyeOffIcon />}
@@ -297,7 +387,10 @@ function FileTreeNode({
             onClick={() => setOpen(prev => !prev)}
           >
             <FolderIcon open={open} />
-            <span className="ft-name">{node.name}</span>
+            {ctx.renamePath === node.path
+              ? <RenameInlineInput node={node} />
+              : <span className="ft-name">{node.name}</span>
+            }
           </span>
           {ctx.cwd && (
             <div className="ft-row-actions" onClick={e => e.stopPropagation()}>
@@ -335,6 +428,7 @@ function FileTreeNode({
                   selected={selected}
                   onPreview={onPreview}
                   onOpen={onOpen}
+                  onOpenEdit={onOpenEdit}
                   onAttach={onAttach}
                   changedPaths={changedPaths}
                   mode={mode}
@@ -373,11 +467,15 @@ function FileTreeNode({
       data-path={node.path}
       style={{ paddingLeft: `${16 + depth * 12}px`, display: 'flex', alignItems: 'center' }}
       onClick={handleClick}
+      {...dirCtxProps}
     >
       <span style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
         {node.hidden && <EyeOffIcon />}
         <FileIcon name={node.name} />
-        <span className="ft-filename">{node.name}</span>
+        {ctx.renamePath === node.path
+          ? <RenameInlineInput node={node} />
+          : <span className="ft-filename">{node.name}</span>
+        }
       </span>
       {ctx.cwd && (
         <div className="ft-row-actions" onClick={e => e.stopPropagation()}>
@@ -401,6 +499,7 @@ interface FileTreeProps {
   selected: Set<string>;
   onPreview: (path: string) => void;
   onOpen?: (path: string) => void;
+  onOpenEdit?: (path: string) => void;
   onAttach?: (path: string) => void;
   changedPaths: Set<string>;
   mode?: 'all' | 'changes';
@@ -417,6 +516,7 @@ export function FileTree({
   selected,
   onPreview,
   onOpen,
+  onOpenEdit,
   onAttach,
   changedPaths,
   mode = 'all',
@@ -432,6 +532,7 @@ export function FileTree({
   const [creating, setCreating] = useState<{ parentPath: string; type: 'file' | 'dir' } | null>(null);
   const [newName, setNewName] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [renamePath, setRenamePath] = useState<string | null>(null);
 
   useEffect(() => {
     if (!activePath || !rootRef.current) return;
@@ -466,6 +567,8 @@ export function FileTree({
     setCreating,
     newName,
     setNewName,
+    renamePath,
+    setRenamePath,
   };
 
   if (mode === 'changes' && changedPaths.size === 0) {
@@ -510,6 +613,7 @@ export function FileTree({
                 selected={selected}
                 onPreview={onPreview}
                 onOpen={onOpen}
+                onOpenEdit={onOpenEdit}
                 onAttach={onAttach}
                 changedPaths={changedPaths}
                 mode={mode}

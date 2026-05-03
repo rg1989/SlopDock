@@ -1453,53 +1453,51 @@ app.post('/api/telegram-restart', async (_req, res) => {
 
 // MCP server endpoints
 const CLAUDE_SETTINGS_FILE = path.join(os.homedir(), '.claude', 'settings.json');
+const CLAUDE_DESKTOP_CONFIG = path.join(os.homedir(), 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json');
+
+async function readMcpConfig(file: string): Promise<Record<string, unknown>> {
+  try { return JSON.parse(await readFile(file, 'utf-8')) as Record<string, unknown>; } catch { return {}; }
+}
+
+async function writeMcpConfig(file: string, data: Record<string, unknown>): Promise<void> {
+  const tmp = file + '.tmp';
+  await writeFile(tmp, JSON.stringify(data, null, 2), 'utf-8');
+  await rename(tmp, file);
+}
+
+function getMcpServers(config: Record<string, unknown>): Record<string, { command: string; args: string[] }> {
+  return (config.mcpServers ?? {}) as Record<string, { command: string; args: string[] }>;
+}
 
 app.get('/api/mcp-servers', async (req, res) => {
-  let settings: Record<string, unknown> = {};
-  try {
-    const raw = await readFile(CLAUDE_SETTINGS_FILE, 'utf-8');
-    settings = JSON.parse(raw) as Record<string, unknown>;
-  } catch {
-    // file missing or parse error — treat as empty
-  }
-  const mcpServers = (settings.mcpServers ?? {}) as Record<string, { command: string; args: string[] }>;
+  const [desktop, cli] = await Promise.all([readMcpConfig(CLAUDE_DESKTOP_CONFIG), readMcpConfig(CLAUDE_SETTINGS_FILE)]);
+  const merged = { ...getMcpServers(cli), ...getMcpServers(desktop) };
   const PORT_SELF = Number(process.env.PORT ?? 3000);
-  const result: Record<string, { command: string; args: string[]; status: 'active' | 'registered' }> = {};
-  for (const [name, srv] of Object.entries(mcpServers)) {
+  const result: Record<string, { command: string; args: string[]; status: 'active' | 'registered'; source: string }> = {};
+  for (const [name, srv] of Object.entries(merged)) {
     let status: 'active' | 'registered' = 'registered';
     if (name === 'slopmop-canvas') {
-      try {
-        const r = await fetch(`http://localhost:${PORT_SELF}/api/canvas/tabs`);
-        if (r.ok) status = 'active';
-      } catch {
-        // not active
-      }
+      try { const r = await fetch(`http://localhost:${PORT_SELF}/api/canvas/tabs`); if (r.ok) status = 'active'; } catch { /* not active */ }
     }
-    result[name] = { command: srv.command, args: srv.args ?? [], status };
+    const inDesktop = name in getMcpServers(desktop);
+    result[name] = { command: srv.command, args: srv.args ?? [], status, source: inDesktop ? 'desktop' : 'cli' };
   }
   res.json({ servers: result });
 });
 
 app.post('/api/mcp-register-canvas', async (_req, res) => {
+  const entry = { command: 'node', args: [path.resolve(process.cwd(), 'server/canvas-mcp-stdio.js')] };
   try {
-    let existing: Record<string, unknown> = {};
-    try {
-      const raw = await readFile(CLAUDE_SETTINGS_FILE, 'utf-8');
-      existing = JSON.parse(raw) as Record<string, unknown>;
-    } catch {
-      // file missing — start fresh
-    }
-    if (!existing.mcpServers || typeof existing.mcpServers !== 'object') {
-      existing.mcpServers = {};
-    }
-    (existing.mcpServers as Record<string, unknown>)['slopmop-canvas'] = {
-      command: 'node',
-      args: [path.resolve(process.cwd(), 'server/canvas-mcp-stdio.js')],
-      env: {},
-    };
-    const tmpFile = CLAUDE_SETTINGS_FILE + '.tmp';
-    await writeFile(tmpFile, JSON.stringify(existing, null, 2), 'utf-8');
-    await rename(tmpFile, CLAUDE_SETTINGS_FILE);
+    // Write to Desktop app config (what Claude reads at session startup)
+    const desktop = await readMcpConfig(CLAUDE_DESKTOP_CONFIG);
+    if (!desktop.mcpServers || typeof desktop.mcpServers !== 'object') desktop.mcpServers = {};
+    (desktop.mcpServers as Record<string, unknown>)['slopmop-canvas'] = entry;
+    await writeMcpConfig(CLAUDE_DESKTOP_CONFIG, desktop);
+    // Also keep CLI config in sync
+    const cli = await readMcpConfig(CLAUDE_SETTINGS_FILE);
+    if (!cli.mcpServers || typeof cli.mcpServers !== 'object') cli.mcpServers = {};
+    (cli.mcpServers as Record<string, unknown>)['slopmop-canvas'] = { ...entry, env: {} };
+    await writeMcpConfig(CLAUDE_SETTINGS_FILE, cli);
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e) });
@@ -1510,19 +1508,11 @@ app.delete('/api/mcp-remove/:name', async (req, res) => {
   const { name } = req.params;
   if (!name) { res.status(400).json({ ok: false, error: 'name required' }); return; }
   try {
-    let existing: Record<string, unknown> = {};
-    try {
-      const raw = await readFile(CLAUDE_SETTINGS_FILE, 'utf-8');
-      existing = JSON.parse(raw) as Record<string, unknown>;
-    } catch {
-      // file missing — nothing to remove
+    for (const file of [CLAUDE_DESKTOP_CONFIG, CLAUDE_SETTINGS_FILE]) {
+      const cfg = await readMcpConfig(file);
+      if (cfg.mcpServers && typeof cfg.mcpServers === 'object') delete (cfg.mcpServers as Record<string, unknown>)[name];
+      await writeMcpConfig(file, cfg);
     }
-    if (existing.mcpServers && typeof existing.mcpServers === 'object') {
-      delete (existing.mcpServers as Record<string, unknown>)[name];
-    }
-    const tmpFile = CLAUDE_SETTINGS_FILE + '.tmp';
-    await writeFile(tmpFile, JSON.stringify(existing, null, 2), 'utf-8');
-    await rename(tmpFile, CLAUDE_SETTINGS_FILE);
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e) });

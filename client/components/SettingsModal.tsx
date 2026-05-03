@@ -4,6 +4,7 @@ import type { AppSettings, PttCombo, AgentConfig, TypeIndicatorSize } from '../h
 import { pttComboToLabel, DEFAULT_AGENT } from '../hooks/useSettings';
 import { VaultTab } from './VaultTab';
 import { TelegramSettingsTab } from './TelegramSettingsTab';
+import { AccentColorPicker } from './AccentColorPicker';
 
 const ShieldIcon: FC = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -194,7 +195,6 @@ export const SettingsModal: FC<SettingsModalProps> = ({ settings, onUpdate, onCl
   const [activeTab, setActiveTab] = useState<SettingsTab>('display');
   const [guardianEnabled, setGuardianEnabled] = useState<boolean | null>(null);
   const [accentColor, setAccentColorState] = useState<string | null>(null);
-  const [accentDraft, setAccentDraft] = useState('');
   const [capturing, setCapturing] = useState(false);
   const [liveCombo, setLiveCombo] = useState<PttCombo | null>(null);
   const [agentDraft, setAgentDraft] = useState<{ command: string; args: string; label: string }>({
@@ -277,13 +277,10 @@ export const SettingsModal: FC<SettingsModalProps> = ({ settings, onUpdate, onCl
   }, [cwd]);
 
   useEffect(() => {
-    if (!cwd) { setAccentColorState(null); setAccentDraft(''); return; }
+    if (!cwd) { setAccentColorState(null); return; }
     fetch(`/api/slop-accent?cwd=${encodeURIComponent(cwd)}`)
       .then(r => r.json())
-      .then(({ accentColor: c }: { accentColor: string | null }) => {
-        setAccentColorState(c ?? null);
-        setAccentDraft(c ?? '');
-      })
+      .then(({ accentColor: c }: { accentColor: string | null }) => setAccentColorState(c ?? null))
       .catch(() => {});
   }, [cwd]);
 
@@ -428,49 +425,14 @@ export const SettingsModal: FC<SettingsModalProps> = ({ settings, onUpdate, onCl
               <div className="settings-section settings-section--row">
                 <div className="settings-section-label">
                   Accent Color
-                  <InfoTip tip="Override the orange accent color for this project. Applies to buttons, active states, and the terminal cursor. Default restores the built-in color." />
+                  <InfoTip tip="Choose an accent color for this project. Claude Orange is the built-in default. Pick any preset or add your own — custom colors are saved globally and available in all projects." />
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div className="pill-toggle">
-                    <button
-                      className={`pill-opt${!accentColor ? ' pill-opt--on' : ''}`}
-                      onClick={() => { saveAccent(null); setAccentDraft(''); }}
-                      disabled={!cwd}
-                    >Default</button>
-                    <button
-                      className={`pill-opt${accentColor ? ' pill-opt--on' : ''}`}
-                      onClick={() => {
-                        if (!accentColor) {
-                          const hex = accentDraft && /^#[0-9a-f]{6}$/i.test(accentDraft) ? accentDraft : '#d4845a';
-                          setAccentDraft(hex);
-                          saveAccent(hex);
-                        }
-                      }}
-                      disabled={!cwd}
-                    >Custom</button>
-                  </div>
-                  {accentColor && (
-                    <>
-                      <div style={{ width: 18, height: 18, borderRadius: 3, background: accentColor, border: '1px solid var(--border)', flexShrink: 0 }} />
-                      <input
-                        className="settings-accent-input"
-                        type="text"
-                        value={accentDraft}
-                        maxLength={7}
-                        placeholder="#rrggbb"
-                        onChange={e => {
-                          const v = e.target.value;
-                          setAccentDraft(v);
-                          if (/^#[0-9a-f]{6}$/i.test(v)) saveAccent(v);
-                        }}
-                        onBlur={() => {
-                          if (!/^#[0-9a-f]{6}$/i.test(accentDraft)) {
-                            setAccentDraft(accentColor ?? '');
-                          }
-                        }}
-                      />
-                    </>
-                  )}
+                  <AccentColorPicker
+                    value={accentColor}
+                    onChange={hex => saveAccent(hex)}
+                    disabled={!cwd}
+                  />
                   {!cwd && <span style={{ fontSize: 11, color: 'var(--txt-dim)' }}>Open a project to customize</span>}
                 </div>
               </div>

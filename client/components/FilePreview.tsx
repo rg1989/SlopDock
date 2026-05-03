@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { MarkdownRenderer } from './MarkdownRenderer';
 
 export type FilePreviewData =
@@ -125,6 +125,8 @@ export function FilePreview({ data, filePath, cwd, initialEditing, onPromote }: 
   const [saving, setSaving] = useState(false);
   const [highlightedHtml, setHighlightedHtml] = useState<string | null>(null);
   const [mdPreview, setMdPreview] = useState(false);
+  const editAreaRef = useRef<HTMLTextAreaElement>(null);
+  const highlightBgRef = useRef<HTMLDivElement>(null);
 
   const isMarkdown = filePath?.match(/\.(md|markdown)$/i) != null;
 
@@ -136,7 +138,7 @@ export function FilePreview({ data, filePath, cwd, initialEditing, onPromote }: 
     setMdPreview(false);
   }, [data, initialEditing]);
 
-  // Highlight code via server-side Shiki
+  // Highlight code via server-side Shiki (view mode)
   useEffect(() => {
     if (!data || data.type !== 'text' || editing) return;
     let cancelled = false;
@@ -146,6 +148,25 @@ export function FilePreview({ data, filePath, cwd, initialEditing, onPromote }: 
     });
     return () => { cancelled = true; };
   }, [data, filePath, editing]);
+
+  // Re-highlight draft content while editing (debounced)
+  useEffect(() => {
+    if (!editing) return;
+    const timer = setTimeout(() => {
+      const lang = extToShikiLang(filePath);
+      fetchHighlight(draft, lang).then(html => {
+        if (html) setHighlightedHtml(html);
+      });
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [draft, editing, filePath]);
+
+  const syncScroll = useCallback(() => {
+    if (editAreaRef.current && highlightBgRef.current) {
+      highlightBgRef.current.scrollTop = editAreaRef.current.scrollTop;
+      highlightBgRef.current.scrollLeft = editAreaRef.current.scrollLeft;
+    }
+  }, []);
 
   if (data === null) {
     return (
@@ -238,7 +259,21 @@ export function FilePreview({ data, filePath, cwd, initialEditing, onPromote }: 
           )}
         </div>
         {editing ? (
-          <textarea className="fp-edit-area" value={draft} onChange={(e) => setDraft(e.target.value)} />
+          <div className="fp-edit-overlay">
+            <div
+              ref={highlightBgRef}
+              className="fp-shiki fp-shiki-bg"
+              dangerouslySetInnerHTML={{ __html: highlightedHtml ?? '' }}
+            />
+            <textarea
+              ref={editAreaRef}
+              className="fp-edit-area fp-edit-transparent"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onScroll={syncScroll}
+              spellCheck={false}
+            />
+          </div>
         ) : mdPreview && isMarkdown ? (
           <div className="fp-md-preview">
             <MarkdownRenderer content={content} />
