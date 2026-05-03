@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Foundation ✅ SHIPPED 2026-05-02
 status: executing
-stopped_at: Completed 16-01-PLAN.md
-last_updated: "2026-05-03T18:55:10.915Z"
+stopped_at: Completed 16-02-PLAN.md
+last_updated: "2026-05-03T18:56:10.173Z"
 last_activity: 2026-05-03 — Plan 15-01 complete (RED test scaffold for TerminalInput, 5 tests)
 progress:
   total_phases: 2
   completed_phases: 1
   total_plans: 8
-  completed_plans: 5
+  completed_plans: 6
   percent: 5
 ---
 
@@ -51,6 +51,8 @@ Key decisions affecting v1.2:
 - [Phase 16-overlays-cleanup]: Stale Composer comment in App.css icon-btn section updated during cleanup to satisfy zero-references requirement
 - [Phase 16]: ActionBar accepts voiceSlot as ReactNode — App passes VoiceBar node directly, no VoiceBar-specific wiring in SessionPane
 - [Phase 16]: handlePickFile lives in SessionPane (not ActionBar) to keep ActionBar a pure presentational component
+- [Phase 16-02]: Use useRef booleans (slashOpenRef, inputEmptyRef) in attachCustomKeyEventHandler to avoid stale closures
+- [Phase 16-02]: injectText uses DEL then paste to erase leading slash before inserting slash command text
 
 ### Pending Todos
 
@@ -62,6 +64,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-03T18:55:10.913Z
-Stopped at: Completed 16-01-PLAN.md
+Last session: 2026-05-03T18:56:10.170Z
+Stopped at: Completed 16-02-PLAN.md
 Resume file: None

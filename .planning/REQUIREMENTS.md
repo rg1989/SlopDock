@@ -22,8 +22,8 @@
 
 ### Slash Commands
 
-- [ ] **SLASH-01**: When user types `/` in terminal input, the slash command popup appears as an overlay above the input
-- [ ] **SLASH-02**: User can navigate the popup with arrow keys and select a command with Enter
+- [x] **SLASH-01**: When user types `/` in terminal input, the slash command popup appears as an overlay above the input
+- [x] **SLASH-02**: User can navigate the popup with arrow keys and select a command with Enter
 
 ### Attachment Display
 
@@ -65,8 +65,8 @@
 | TINPUT-04 | Phase 15 | Complete |
 | ACTION-01 | Phase 16 | Complete |
 | ACTION-02 | Phase 16 | Complete |
-| SLASH-01 | Phase 16 | Pending |
-| SLASH-02 | Phase 16 | Pending |
+| SLASH-01 | Phase 16 | Complete |
+| SLASH-02 | Phase 16 | Complete |
 | ATTACH-01 | Phase 16 | Pending |
 | ATTACH-02 | Phase 16 | Pending |
 | CLEAN-01 | Phase 16 | Complete |
