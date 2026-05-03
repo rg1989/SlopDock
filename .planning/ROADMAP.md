@@ -18,7 +18,7 @@ Phases 1–9 — PTY terminal, file explorer, voice I/O, multi-session tabs, onb
 
 ---
 
-## v1.1: PTY Session Persistence
+## v1.1: Shell + Canvas
 
 ### Phase 10: PTY Session Persistence
 
@@ -72,6 +72,22 @@ Plans:
 - [ ] 13-02-PLAN.md — RawTerminalPane component + App.tsx wiring (tab bar, auto-seed, body)
 - [ ] 13-03-PLAN.md — CSS for tab chips/add button + human visual verify
 
+### Phase 14: canvas-mcp-and-connections
+
+**Goal:** Give Claude CLI first-class canvas access via a local MCP server. Multi-tab canvas panel where the agent opens, updates, and locks tabs via MCP tools. Plus an MCP connections management UI (button + modal) in the toolbar, and a canvas design system so agent-generated content always matches the app theme.
+
+**Depends on:** Phase 13
+**Requirements:** MCP-01, MCP-02, MCP-03, MCP-04, MCP-05, CANVASTAB-01, CANVASTAB-02, CANVASTAB-03, CANVASTAB-04, MCPUI-01, MCPUI-02
+**Plans:** 6 plans
+
+Plans:
+- [ ] 14-01-PLAN.md — Wave 0: npm install MCP SDK + 4 RED test stubs (all 11 requirements)
+- [ ] 14-02-PLAN.md — Backend: canvas-tab-store.ts, canvas-tab-sse.ts, REST + SSE routes (MCP-01..04, CANVASTAB-04)
+- [ ] 14-03-PLAN.md — MCP Connections UI: McpConnectionsModal + fp-mcp-btn + backend endpoints (MCPUI-01, MCPUI-02)
+- [ ] 14-04-PLAN.md — Frontend: MultiTabCanvasPanel + App.tsx wiring (CANVASTAB-01..03)
+- [ ] 14-05-PLAN.md — MCP stdio server: canvas-mcp-stdio.js with 5 tools (MCP-05)
+- [ ] 14-06-PLAN.md — .slop/CLAUDE.md canvas instructions + human visual verify (MCP-05)
+
 ---
 
 ## Progress
@@ -83,3 +99,4 @@ Plans:
 | 11. Canvas Panel Extraction | 4/4 | Complete    | 2026-05-02 |
 | 12. Bottom Panel Shell | 2/2 | Complete    | 2026-05-02 |
 | 13. Raw Terminal Sessions | 3/3 | Complete    | 2026-05-02 |
+| 14. Canvas MCP + Connections UI | 0/6 | Not started | — |
