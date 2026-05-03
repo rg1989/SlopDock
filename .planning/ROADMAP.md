@@ -67,7 +67,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 15. Terminal Input Core | 1/3 | In Progress|  |
+| 15. Terminal Input Core | 2/3 | In Progress|  |
 | 16. Overlays + Cleanup | 0/? | Not started | - |
 
 ---

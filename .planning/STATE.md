@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.2
-milestone_name: Terminal-Native Composer
-status: in_progress
-stopped_at: "Completed 15-01-PLAN.md — RED test scaffold for TerminalInput"
-last_updated: "2026-05-03T17:48:30Z"
-last_activity: "2026-05-03 - Plan 15-01 complete: failing TerminalInput test scaffold (5 RED tests)"
+milestone: v1.0
+milestone_name: Foundation ✅ SHIPPED 2026-05-02
+status: executing
+stopped_at: Completed 15-02-PLAN.md
+last_updated: "2026-05-03T17:52:22.505Z"
+last_activity: 2026-05-03 — Plan 15-01 complete (RED test scaffold for TerminalInput, 5 tests)
 progress:
   total_phases: 2
   completed_phases: 0
-  total_plans: 1
-  completed_plans: 1
+  total_plans: 3
+  completed_plans: 2
   percent: 5
 ---
 
@@ -43,6 +43,8 @@ Key decisions affecting v1.2:
 - [Phase 01-04]: PTY expects \r (CR) not \n (LF) for submitting input — relevant to terminal input
 - [Phase 01-03]: Composer sends value+newline to PTY — new terminal input forwards raw keystrokes instead
 - [v1.2]: xterm.js already used for display (Terminal.tsx, RawTerminalPane.tsx) — same pattern applies to input strip
+- [Phase 15]: useState for xterm terminal instance enables onData re-wiring after async dynamic import init
+- [Phase 15]: disableStdin prop on Terminal.tsx defaults false; SessionPane passes true for Claude sessions in Plan 03
 
 ### Pending Todos
 
@@ -54,6 +56,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-03
-Stopped at: Completed 15-01-PLAN.md — RED test scaffold for TerminalInput
+Last session: 2026-05-03T17:52:22.502Z
+Stopped at: Completed 15-02-PLAN.md
 Resume file: None
