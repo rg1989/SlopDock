@@ -12,6 +12,7 @@ import { SourceControl } from './components/SourceControl';
 import { SettingsModal } from './components/SettingsModal';
 import { GsdRoadmap } from './components/GsdRoadmap';
 import { BrainPanel } from './components/BrainPanel';
+import { LiveCanvasPanel } from './components/LiveCanvasPanel';
 import { SessionTabBar } from './components/SessionTabBar';
 import { SessionPane } from './components/SessionPane';
 import { SessionHistoryModal } from './components/SessionHistoryModal';
@@ -26,7 +27,10 @@ import type { SuperTool } from './components/SuperToolsModal';
 import { RulesModal } from './components/RulesModal';
 import { OnboardingModal } from './components/OnboardingModal';
 import { useProjectHealth } from './hooks/useProjectHealth';
+import { useAccentColor } from './hooks/useAccentColor';
 import { HealthStatusBar } from './components/HealthStatusBar';
+import { useRawSessionManager } from './hooks/useRawSessionManager';
+import { RawTerminalPane } from './components/RawTerminalPane';
 import './App.css';
 
 type SidebarTabId = 'explorer' | 'changes' | 'roadmap' | 'brain';
@@ -38,8 +42,10 @@ const IconExplorer = () => (
 );
 const IconChanges = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/>
-    <path d="M6 21V9a9 9 0 0 0 9 9"/>
+    <line x1="6" y1="3" x2="6" y2="15"/>
+    <circle cx="18" cy="6" r="3"/>
+    <circle cx="6" cy="18" r="3"/>
+    <path d="M18 9a9 9 0 0 1-9 9"/>
   </svg>
 );
 const IconRoadmap = () => (
@@ -54,7 +60,6 @@ const IconBrain = () => (
     <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3z"/>
   </svg>
 );
-
 const SIDEBAR_TABS: { id: SidebarTabId; label: string; Icon: () => JSX.Element }[] = [
   { id: 'explorer', label: 'Explorer', Icon: IconExplorer },
   { id: 'changes', label: 'Source Control', Icon: IconChanges },
@@ -67,13 +72,22 @@ const STORAGE_KEY = 'slopmop_last_folder';
 const SIDEBAR_MIN = 180;
 const SIDEBAR_DEFAULT = 240;
 const RESIZE_HANDLE_WIDTH = 4;
+const CANVAS_DEFAULT_WIDTH = 360;
+const CANVAS_MIN = 200;
+const CANVAS_MIN_CENTER = 280;
+const BOTTOM_PANEL_DEFAULT_HEIGHT = 200;
+const BOTTOM_PANEL_MIN = 80;
 
 // ── UI state persistence ──────────────────────────────────────────────────────
 const UI = {
-  sidebarTab:   'slopmop_ui:sidebar_tab',
-  sidebarWidth: 'slopmop_ui:sidebar_width',
-  editorWidth:  'slopmop_ui:editor_width',
-  editorTabs:   (cwd: string) => `slopmop_ui:editor_tabs:${cwd}`,
+  sidebarTab:    'slopmop_ui:sidebar_tab',
+  sidebarWidth:  'slopmop_ui:sidebar_width',
+  editorWidth:   'slopmop_ui:editor_width',
+  editorTabs:    (cwd: string) => `slopmop_ui:editor_tabs:${cwd}`,
+  canvasVisible: 'slopmop_ui:canvas_visible',
+  canvasWidth:   'slopmop_ui:canvas_width',
+  bottomPanelOpen:   'slopmop_ui:bottom_panel_open',
+  bottomPanelHeight: 'slopmop_ui:bottom_panel_height',
 } as const;
 
 function uiRead<T>(key: string, fallback: T): T {
@@ -152,6 +166,7 @@ export default function App() {
 
   const { settings, update: updateSettings } = useSettings();
   const health = useProjectHealth(cwd, settings.agent.command);
+  const { hex: accentHex } = useAccentColor(cwd);
 
   // Drag-resize — restore persisted widths as initial values
   const sidebarMaxRef = useRef<number>(Infinity);
@@ -160,10 +175,29 @@ export default function App() {
   const editorMaxRef = useRef<number>(Infinity);
   const [editorInitWidth] = useState(() => Math.max(180, uiRead(UI.editorWidth, 320)));
   const editor = useDragResize(editorInitWidth, 180, 'right', editorMaxRef);
+  const [isCanvasVisible, setIsCanvasVisible] = useState<boolean>(() =>
+    uiRead<boolean>(UI.canvasVisible, true)
+  );
+  const [canvasInitWidth] = useState(() => {
+    const stored = uiRead(UI.canvasWidth, CANVAS_DEFAULT_WIDTH);
+    const max = Math.floor(window.innerWidth * 0.7);
+    return Math.max(CANVAS_MIN, Math.min(max, stored));
+  });
+  const canvasMaxRef = useRef<number>(Infinity);
+  const canvas = useDragResize(canvasInitWidth, CANVAS_MIN, 'right', canvasMaxRef);
+  const [bottomPanelOpen, setBottomPanelOpen] = useState<boolean>(() =>
+    uiRead<boolean>(UI.bottomPanelOpen, false)
+  );
+  const [bottomPanelInitHeight] = useState(() =>
+    Math.max(BOTTOM_PANEL_MIN, uiRead(UI.bottomPanelHeight, BOTTOM_PANEL_DEFAULT_HEIGHT))
+  );
+  const bottomPanelMaxRef = useRef<number>(Infinity);
+  const bottomPanel = useDragResize(bottomPanelInitHeight, BOTTOM_PANEL_MIN, 'up', bottomPanelMaxRef);
 
   // Track drag-end to persist widths (avoid writing on every pixel during drag)
   const prevSidebarDragging = useRef(false);
   const prevEditorDragging = useRef(false);
+  const prevCanvasDragging = useRef(false);
   useEffect(() => {
     if (prevSidebarDragging.current && !sidebar.isDragging) uiWrite(UI.sidebarWidth, sidebar.width);
     prevSidebarDragging.current = sidebar.isDragging;
@@ -172,12 +206,40 @@ export default function App() {
     if (prevEditorDragging.current && !editor.isDragging) uiWrite(UI.editorWidth, editor.width);
     prevEditorDragging.current = editor.isDragging;
   }, [editor.isDragging, editor.width]);
+  useEffect(() => {
+    if (prevCanvasDragging.current && !canvas.isDragging) uiWrite(UI.canvasWidth, canvas.width);
+    prevCanvasDragging.current = canvas.isDragging;
+  }, [canvas.isDragging, canvas.width]);
+
+  const prevBottomPanelDragging = useRef(false);
+  useEffect(() => {
+    if (prevBottomPanelDragging.current && !bottomPanel.isDragging)
+      uiWrite(UI.bottomPanelHeight, bottomPanel.width);
+    prevBottomPanelDragging.current = bottomPanel.isDragging;
+  }, [bottomPanel.isDragging, bottomPanel.width]);
+
+  const toggleBottomPanel = useCallback(() => {
+    setBottomPanelOpen(v => {
+      uiWrite(UI.bottomPanelOpen, !v);
+      return !v;
+    });
+  }, []);
+
+  const toggleCanvas = useCallback(() => {
+    setIsCanvasVisible(v => {
+      uiWrite(UI.canvasVisible, !v);
+      return !v;
+    });
+  }, []);
 
   // Ref used to restore editor tabs exactly once per cwd
   const initialSessionRestoredRef = useRef(false);
 
   // ── Session manager ──────────────────────────────────────────────────────────
   const sessionManager = useSessionManager();
+
+  // ── Raw terminal sessions (bottom panel) ─────────────────────────────────────
+  const { sessions: rawSessions, activeId: rawActiveId, add: rawAdd, remove: rawRemove, setActive: rawSetActive, updateStatus: rawUpdateStatus } = useRawSessionManager(cwd);
 
   // ── Audio coordinator (app-scoped — routes to active session via ref) ────────
   const audio = useAudioCoordinator({
@@ -222,9 +284,21 @@ export default function App() {
       .catch(() => setSlopExists(null));
   }, [cwd]);
 
+  // Auto-seed one shell session when the bottom panel opens for the first time
+  useEffect(() => {
+    if (bottomPanelOpen && cwd && rawSessions.length === 0) {
+      rawAdd();
+    }
+  }, [bottomPanelOpen, cwd]); // rawAdd intentionally excluded — changes every render, would cause infinite loop
+
   // ── Layout max-width refs (updated every render) ─────────────────────────────
   sidebarMaxRef.current = window.innerWidth - 300 - RESIZE_HANDLE_WIDTH;
   editorMaxRef.current = window.innerWidth - (cwd ? sidebar.width + RESIZE_HANDLE_WIDTH : 0) - 300;
+  {
+    const currentSidebarWidth = cwd ? sidebar.width + RESIZE_HANDLE_WIDTH : 0;
+    canvasMaxRef.current = window.innerWidth - currentSidebarWidth - CANVAS_MIN_CENTER - RESIZE_HANDLE_WIDTH;
+  }
+  bottomPanelMaxRef.current = Math.floor(window.innerHeight * 0.5);
 
   // Guard against React StrictMode double-invoking the initial spawn effect
   const initialSpawnedRef = useRef(false);
@@ -238,16 +312,29 @@ export default function App() {
     sessionManager.spawn(normalized, { initial: true });
   }, [sessionManager]);
 
-  // Auto-connect from saved path on first load
+  // Auto-connect from saved path on first load — validates the path still exists first
   useEffect(() => {
-    if (initialPath && !initialSpawnedRef.current) {
-      initialSpawnedRef.current = true;
-      const normalized = initialPath.replace(/\/+$/, '');
-      persistPath(normalized);
-      setCwd(normalized);
-      sessionManager.restoreForCwd(normalized);
-      sessionManager.spawn(normalized, { initial: true });
-    }
+    if (!initialPath || initialSpawnedRef.current) return;
+    initialSpawnedRef.current = true;
+    const normalized = initialPath.replace(/\/+$/, '');
+    fetch(`/api/dir-exists?path=${encodeURIComponent(normalized)}`)
+      .then(r => r.json())
+      .then(({ exists }: { exists: boolean }) => {
+        if (!exists) {
+          localStorage.removeItem(STORAGE_KEY);
+          const url = new URL(window.location.href);
+          url.searchParams.delete('cwd');
+          window.history.replaceState(null, '', url.toString());
+          return;
+        }
+        persistPath(normalized);
+        setCwd(normalized);
+        sessionManager.restoreForCwd(normalized);
+        sessionManager.spawn(normalized, { initial: true });
+      })
+      .catch(() => {
+        localStorage.removeItem(STORAGE_KEY);
+      });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -309,6 +396,8 @@ export default function App() {
           onSettingsOpen={() => setSettingsOpen(true)}
           onSuperToolsOpen={() => setSuperToolsOpen(true)}
           onRulesOpen={() => setRulesOpen(true)}
+          onCanvasToggle={toggleCanvas}
+          isCanvasVisible={isCanvasVisible}
         />
       </div>
       {cwd && <HealthStatusBar health={health} slopExists={slopExists} />}
@@ -338,6 +427,7 @@ export default function App() {
           settings={settings}
           onUpdate={updateSettings}
           onClose={() => setSettingsOpen(false)}
+          cwd={cwd}
         />
       )}
 
@@ -461,7 +551,7 @@ export default function App() {
                   ? !sessionManager.sessions.some(s => s.name === 'New')
                   : sessionManager.hasPrompted
               }
-              onSetActive={sessionManager.setActive}
+              onSetActive={(id) => { sessionManager.setActive(id); requestAnimationFrame(() => composerRef.current?.focus()); }}
               onClose={sessionManager.close}
               onSpawn={() => { if (cwd) sessionManager.spawn(cwd); }}
               onOpenHistory={() => setHistoryOpen(true)}
@@ -497,6 +587,7 @@ export default function App() {
                 ttsEnabled={ttsEnabled}
                 onTtsData={audio.tts.handleData}
                 brainRefreshTrigger={() => setBrainRefreshKey(k => k + 1)}
+                accentHex={accentHex}
                 onRegisterActions={(actions) => {
                   if (s.id === sessionManager.activeId) {
                     activeActionsRef.current = actions;
@@ -518,6 +609,57 @@ export default function App() {
                 }}
               />
             ))}
+          </div>
+          <div className="bottom-panel-tab-bar">
+            <div className="bottom-panel-tab-bar-tabs">
+              {rawSessions.map((s, i) => (
+                <button
+                  key={s.id}
+                  className={`bpanel-tab${s.id === rawActiveId ? ' bpanel-tab--active' : ''}`}
+                  onClick={() => rawSetActive(s.id)}
+                >
+                  <span className="bpanel-tab-label">shell {i + 1}</span>
+                  <button
+                    className="bpanel-tab-close"
+                    onClick={e => { e.stopPropagation(); rawRemove(s.id); }}
+                  >×</button>
+                </button>
+              ))}
+              <button className="bpanel-add-btn" onClick={rawAdd} title="New terminal">+</button>
+            </div>
+            <button
+              className="bottom-panel-toggle-btn"
+              title={bottomPanelOpen ? 'Collapse panel' : 'Expand panel'}
+              onClick={toggleBottomPanel}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                {bottomPanelOpen
+                  ? <polyline points="6 9 12 15 18 9" />
+                  : <polyline points="18 15 12 9 6 15" />
+                }
+              </svg>
+            </button>
+          </div>
+          <div
+            className={`resize-handle--h${bottomPanel.isDragging ? ' dragging' : ''}`}
+            onMouseDown={bottomPanel.onMouseDown}
+            style={{ display: bottomPanelOpen ? undefined : 'none' }}
+          />
+          <div
+            className="bottom-panel"
+            style={{ height: bottomPanel.width, display: bottomPanelOpen ? undefined : 'none' }}
+          >
+            <div className="bottom-panel-body">
+            {rawSessions.map(s => (
+              <RawTerminalPane
+                key={s.id}
+                sessionId={s.id}
+                cwd={s.cwd}
+                isActive={s.id === rawActiveId}
+                onStatus={status => rawUpdateStatus(s.id, status)}
+              />
+            ))}
+            </div>
           </div>
         </div>
 
@@ -560,6 +702,31 @@ export default function App() {
                   />
                 );
               })()}
+            </div>
+          </>
+        )}
+
+        {/* Canvas column — persistent right panel, shown when cwd is set and canvas is visible */}
+        {cwd && isCanvasVisible && (
+          <>
+            <div
+              className={`resize-handle${canvas.isDragging ? ' dragging' : ''}`}
+              onMouseDown={canvas.onMouseDown}
+            />
+            <div className="canvas-column" style={{ width: canvas.width }}>
+              <div className="canvas-column-header">
+                <span className="canvas-column-label">Canvas</span>
+                <button
+                  className="canvas-toggle-btn"
+                  title="Hide canvas"
+                  onClick={toggleCanvas}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+              <LiveCanvasPanel cwd={cwd} isDragging={canvas.isDragging} />
             </div>
           </>
         )}

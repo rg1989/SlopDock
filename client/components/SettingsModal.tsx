@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import type { AppSettings, PttCombo, AgentConfig, TypeIndicatorSize } from '../hooks/useSettings';
 import { pttComboToLabel, DEFAULT_AGENT } from '../hooks/useSettings';
 import { VaultTab } from './VaultTab';
+import { TelegramSettingsTab } from './TelegramSettingsTab';
 
 const ShieldIcon: FC = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -187,11 +188,13 @@ const AgentCommandInput: FC<{
   );
 };
 
-type SettingsTab = 'display' | 'audio' | 'agent' | 'vault' | 'ai';
+type SettingsTab = 'display' | 'audio' | 'agent' | 'vault' | 'ai' | 'telegram';
 
 export const SettingsModal: FC<SettingsModalProps> = ({ settings, onUpdate, onClose, cwd }) => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('display');
   const [guardianEnabled, setGuardianEnabled] = useState<boolean | null>(null);
+  const [accentColor, setAccentColorState] = useState<string | null>(null);
+  const [accentDraft, setAccentDraft] = useState('');
   const [capturing, setCapturing] = useState(false);
   const [liveCombo, setLiveCombo] = useState<PttCombo | null>(null);
   const [agentDraft, setAgentDraft] = useState<{ command: string; args: string; label: string }>({
@@ -273,6 +276,43 @@ export const SettingsModal: FC<SettingsModalProps> = ({ settings, onUpdate, onCl
       .catch(() => setGuardianEnabled(true));
   }, [cwd]);
 
+  useEffect(() => {
+    if (!cwd) { setAccentColorState(null); setAccentDraft(''); return; }
+    fetch(`/api/slop-accent?cwd=${encodeURIComponent(cwd)}`)
+      .then(r => r.json())
+      .then(({ accentColor: c }: { accentColor: string | null }) => {
+        setAccentColorState(c ?? null);
+        setAccentDraft(c ?? '');
+      })
+      .catch(() => {});
+  }, [cwd]);
+
+  function saveAccent(hex: string | null) {
+    if (!cwd) return;
+    setAccentColorState(hex);
+    fetch('/api/slop-accent', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cwd, accentColor: hex }),
+    }).catch(() => {});
+    const root = document.documentElement;
+    if (hex) {
+      const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
+      if (m) {
+        const rgb: [number, number, number] = [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)];
+        root.style.setProperty('--accent', hex);
+        root.style.setProperty('--accent-hover', '#' + rgb.map(c => Math.min(255, Math.round(c + (255 - c) * 0.1)).toString(16).padStart(2, '0')).join(''));
+        root.style.setProperty('--accent-dim', '#' + rgb.map(c => Math.max(0, Math.round(c * 0.92)).toString(16).padStart(2, '0')).join(''));
+        root.style.setProperty('--accent-rgb', rgb.join(', '));
+      }
+    } else {
+      root.style.removeProperty('--accent');
+      root.style.removeProperty('--accent-hover');
+      root.style.removeProperty('--accent-dim');
+      root.style.removeProperty('--accent-rgb');
+    }
+  }
+
   function setGuardian(enabled: boolean) {
     if (!cwd) return;
     setGuardianEnabled(enabled);
@@ -304,7 +344,7 @@ export const SettingsModal: FC<SettingsModalProps> = ({ settings, onUpdate, onCl
       ref={overlayRef}
       onMouseDown={(e) => { if (e.target === overlayRef.current) onClose(); }}
     >
-      <div className="modal-panel" role="dialog" aria-modal="true" aria-label="Settings">
+      <div className="modal-panel modal-panel--settings-wide" role="dialog" aria-modal="true" aria-label="Settings">
 
         {/* Header */}
         <div className="modal-header">
@@ -318,13 +358,13 @@ export const SettingsModal: FC<SettingsModalProps> = ({ settings, onUpdate, onCl
 
         {/* Tab bar */}
         <div className="settings-tab-bar">
-          {(['display', 'audio', 'agent', 'vault', 'ai'] as SettingsTab[]).map(tab => (
+          {(['display', 'audio', 'agent', 'vault', 'ai', 'telegram'] as SettingsTab[]).map(tab => (
             <button
               key={tab}
               className={`settings-tab${activeTab === tab ? ' settings-tab--active' : ''}`}
               onClick={() => setActiveTab(tab)}
             >
-              {tab === 'display' ? 'Display' : tab === 'audio' ? 'Audio' : tab === 'agent' ? 'Agent & Tools' : tab === 'vault' ? 'Vault' : 'AI Guardian'}
+              {tab === 'display' ? 'Display' : tab === 'audio' ? 'Audio' : tab === 'agent' ? 'Agent & Tools' : tab === 'vault' ? 'Vault' : tab === 'ai' ? 'AI Guardian' : 'Telegram'}
             </button>
           ))}
         </div>
@@ -384,6 +424,56 @@ export const SettingsModal: FC<SettingsModalProps> = ({ settings, onUpdate, onCl
                   ))}
                 </div>
               </div>
+
+              <div className="settings-section settings-section--row">
+                <div className="settings-section-label">
+                  Accent Color
+                  <InfoTip tip="Override the orange accent color for this project. Applies to buttons, active states, and the terminal cursor. Default restores the built-in color." />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div className="pill-toggle">
+                    <button
+                      className={`pill-opt${!accentColor ? ' pill-opt--on' : ''}`}
+                      onClick={() => { saveAccent(null); setAccentDraft(''); }}
+                      disabled={!cwd}
+                    >Default</button>
+                    <button
+                      className={`pill-opt${accentColor ? ' pill-opt--on' : ''}`}
+                      onClick={() => {
+                        if (!accentColor) {
+                          const hex = accentDraft && /^#[0-9a-f]{6}$/i.test(accentDraft) ? accentDraft : '#d4845a';
+                          setAccentDraft(hex);
+                          saveAccent(hex);
+                        }
+                      }}
+                      disabled={!cwd}
+                    >Custom</button>
+                  </div>
+                  {accentColor && (
+                    <>
+                      <div style={{ width: 18, height: 18, borderRadius: 3, background: accentColor, border: '1px solid var(--border)', flexShrink: 0 }} />
+                      <input
+                        className="settings-accent-input"
+                        type="text"
+                        value={accentDraft}
+                        maxLength={7}
+                        placeholder="#rrggbb"
+                        onChange={e => {
+                          const v = e.target.value;
+                          setAccentDraft(v);
+                          if (/^#[0-9a-f]{6}$/i.test(v)) saveAccent(v);
+                        }}
+                        onBlur={() => {
+                          if (!/^#[0-9a-f]{6}$/i.test(accentDraft)) {
+                            setAccentDraft(accentColor ?? '');
+                          }
+                        }}
+                      />
+                    </>
+                  )}
+                  {!cwd && <span style={{ fontSize: 11, color: 'var(--txt-dim)' }}>Open a project to customize</span>}
+                </div>
+              </div>
             </div>
           )}
 
@@ -438,6 +528,9 @@ export const SettingsModal: FC<SettingsModalProps> = ({ settings, onUpdate, onCl
 
           {/* Vault tab */}
           {activeTab === 'vault' && <VaultTab />}
+
+          {/* Telegram tab */}
+          {activeTab === 'telegram' && <TelegramSettingsTab />}
 
           {/* AI Guardian tab */}
           {activeTab === 'ai' && (

@@ -3,7 +3,7 @@ import type { Terminal } from '@xterm/xterm';
 import type { ClientMessage, ServerMessage } from '../../shared/protocol';
 import type { AgentConfig } from './useSettings';
 
-export type SessionStatus = 'connecting' | 'waiting' | 'working' | 'done' | 'error';
+export type SessionStatus = 'connecting' | 'reconnecting' | 'waiting' | 'working' | 'done' | 'error';
 
 export interface UsePtyOptions {
   cwd: string | null;
@@ -20,6 +20,8 @@ export interface UsePtyOptions {
   onExit?: (code: number) => void;
   /** Override WebSocket URL — defaults to ws[s]://<same-host>/ws */
   wsUrl?: string;
+  /** Send a kill message to the server before closing the WebSocket on unmount */
+  killOnUnmount?: boolean;
 }
 
 export interface UsePtyReturn {
@@ -34,7 +36,7 @@ function deriveWsUrl(override?: string): string {
   return `${proto}://${window.location.host}/ws`;
 }
 
-export function usePty({ cwd, terminal, cols, rows, agentConfig, onData, sessionId, onStatus, onExit, wsUrl }: UsePtyOptions): UsePtyReturn {
+export function usePty({ cwd, terminal, cols, rows, agentConfig, onData, sessionId, onStatus, onExit, wsUrl, killOnUnmount }: UsePtyOptions): UsePtyReturn {
   const wsRef = useRef<WebSocket | null>(null);
   const [connected, setConnected] = useState(false);
   const [reconnectKey, setReconnectKey] = useState(0);
@@ -72,6 +74,9 @@ export function usePty({ cwd, terminal, cols, rows, agentConfig, onData, session
 
     ws.onmessage = (event) => {
       const msg: ServerMessage = JSON.parse(event.data);
+      if (msg.type === 'session-ready') {
+        onStatusRef.current?.('waiting');
+      }
       if (msg.type === 'data') {
         terminal.write(msg.data);
         onDataRef.current?.(msg.data);
@@ -115,11 +120,14 @@ export function usePty({ cwd, terminal, cols, rows, agentConfig, onData, session
         clearTimeout(workingTimerRef.current);
         workingTimerRef.current = null;
       }
+      if (killOnUnmount && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'kill' }));
+      }
       ws.close();
       wsRef.current = null;
       setConnected(false);
     };
-  }, [cwd, terminal, reconnectKey]); // cols/rows intentionally excluded — resize handled separately
+  }, [cwd, terminal, reconnectKey, sessionId]); // cols/rows intentionally excluded — resize handled separately
 
   const sendInput = useCallback((data: string) => send({ type: 'input', data }), [send]);
   const sendResize = useCallback((c: number, r: number) => send({ type: 'resize', cols: c, rows: r }), [send]);

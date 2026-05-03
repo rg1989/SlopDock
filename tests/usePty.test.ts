@@ -248,3 +248,91 @@ describe('sessionId in protocol', () => {
     expect(startMsg.sessionId).toBeTruthy();
   });
 });
+
+describe('PTY session reconnect', () => {
+  let mockTerminal: import('@xterm/xterm').Terminal;
+
+  beforeEach(() => {
+    wsInstances = [];
+    MockWebSocket.mockClear();
+
+    mockTerminal = {
+      write: vi.fn(),
+      reset: vi.fn(),
+      cols: 80,
+      rows: 24,
+    } as unknown as import('@xterm/xterm').Terminal;
+  });
+
+  it('uses provided sessionId prop in start message (PTY-01)', () => {
+    renderHook(() =>
+      usePty({ cwd: '/tmp', terminal: mockTerminal, cols: 80, rows: 24, agentConfig: DEFAULT_AGENT, sessionId: 'fixed-uuid-1234' })
+    );
+
+    const ws = wsInstances[0];
+    act(() => ws.simulateOpen());
+
+    expect(ws.send).toHaveBeenCalledTimes(1);
+    const startMsg = JSON.parse(ws.send.mock.calls[0][0]);
+    expect(startMsg.sessionId).toBe('fixed-uuid-1234');
+  });
+
+  it('reopens WebSocket with new sessionId when sessionId prop changes (PTY-01)', () => {
+    const { rerender } = renderHook(
+      ({ sessionId }: { sessionId: string }) =>
+        usePty({ cwd: '/tmp', terminal: mockTerminal, cols: 80, rows: 24, agentConfig: DEFAULT_AGENT, sessionId }),
+      { initialProps: { sessionId: 'uuid-a' } }
+    );
+
+    const ws1 = wsInstances[0];
+    act(() => ws1.simulateOpen());
+
+    const firstStartMsg = JSON.parse(ws1.send.mock.calls[0][0]);
+    expect(firstStartMsg.sessionId).toBe('uuid-a');
+
+    rerender({ sessionId: 'uuid-b' });
+
+    expect(MockWebSocket).toHaveBeenCalledTimes(2);
+
+    const ws2 = wsInstances[1];
+    act(() => ws2.simulateOpen());
+
+    const secondStartMsg = JSON.parse(ws2.send.mock.calls[0][0]);
+    expect(secondStartMsg.sessionId).toBe('uuid-b');
+  });
+
+  it('transitions status from reconnecting to waiting on session-ready (PTY-01 reconnect path)', () => {
+    const onStatus = vi.fn();
+
+    renderHook(() =>
+      usePty({ cwd: '/tmp', terminal: mockTerminal, cols: 80, rows: 24, agentConfig: DEFAULT_AGENT, sessionId: 'some-id', onStatus })
+    );
+
+    act(() => onStatus('reconnecting'));
+
+    const ws = wsInstances[0];
+    act(() => ws.simulateOpen());
+    act(() => ws.simulateMessage({ type: 'session-ready', sessionId: 'some-id' }));
+
+    const calls = onStatus.mock.calls.map((c: [string]) => c[0]);
+    expect(calls).toContain('waiting');
+  });
+
+  it('shows done status when reconnecting to an already-exited session (PTY-05)', () => {
+    const onStatus = vi.fn();
+
+    renderHook(() =>
+      usePty({ cwd: '/tmp', terminal: mockTerminal, cols: 80, rows: 24, agentConfig: DEFAULT_AGENT, sessionId: 'exited-id', onStatus })
+    );
+
+    const ws = wsInstances[0];
+    act(() => ws.simulateOpen());
+
+    act(() => onStatus('reconnecting'));
+
+    act(() => ws.simulateMessage({ type: 'exit', code: 0 }));
+
+    const calls = onStatus.mock.calls.map((c: [string]) => c[0]);
+    expect(calls).toContain('done');
+  });
+});

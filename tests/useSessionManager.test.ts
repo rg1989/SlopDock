@@ -300,3 +300,57 @@ describe('useSessionManager', () => {
     });
   });
 });
+
+describe('restoreForCwd', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('restoreForCwd sets session status to reconnecting (PTY-04)', () => {
+    const activeKey = `slopmop_active:${encodeURIComponent('/tmp')}`;
+    localStorage.setItem(activeKey, JSON.stringify({
+      sessions: [{ id: 'restored-id', name: 'Old', status: 'waiting', cwd: '/tmp', createdAt: 1000 }],
+      activeId: 'restored-id',
+    }));
+
+    const { result } = renderHook(() => useSessionManager());
+
+    act(() => {
+      result.current.restoreForCwd('/tmp');
+    });
+
+    expect(result.current.sessions[0].status).toBe('reconnecting');
+  });
+
+  it('restoreForCwd preserves the original session id (PTY-04)', () => {
+    const activeKey = `slopmop_active:${encodeURIComponent('/tmp')}`;
+    localStorage.setItem(activeKey, JSON.stringify({
+      sessions: [{ id: 'restored-id', name: 'Old', status: 'waiting', cwd: '/tmp', createdAt: 1000 }],
+      activeId: 'restored-id',
+    }));
+
+    const { result } = renderHook(() => useSessionManager());
+
+    act(() => {
+      result.current.restoreForCwd('/tmp');
+    });
+
+    expect(result.current.sessions[0].id).toBe('restored-id');
+  });
+
+  it('restoreForCwd restores activeId from localStorage (PTY-04)', () => {
+    const activeKey = `slopmop_active:${encodeURIComponent('/tmp')}`;
+    localStorage.setItem(activeKey, JSON.stringify({
+      sessions: [{ id: 'restored-id', name: 'Old', status: 'waiting', cwd: '/tmp', createdAt: 1000 }],
+      activeId: 'restored-id',
+    }));
+
+    const { result } = renderHook(() => useSessionManager());
+
+    act(() => {
+      result.current.restoreForCwd('/tmp');
+    });
+
+    expect(result.current.activeId).toBe('restored-id');
+  });
+});

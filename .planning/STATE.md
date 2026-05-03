@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.0
-milestone_name: milestone
+milestone_name: Foundation ✅ SHIPPED 2026-05-02
 status: completed
-stopped_at: Completed 06-05-PLAN.md — vault endpoints + VaultTab UI (checkpoint pending)
-last_updated: "2026-05-01T19:54:01.374Z"
+stopped_at: Completed 13-03-PLAN.md
+last_updated: "2026-05-02T23:52:53.162Z"
 last_activity: "2026-04-30 - Completed quick task 1: add syntax colors and edit mode to file preview panel"
 progress:
-  total_phases: 6
-  completed_phases: 6
-  total_plans: 25
-  completed_plans: 25
+  total_phases: 4
+  completed_phases: 4
+  total_plans: 12
+  completed_plans: 12
   percent: 100
 ---
 
@@ -74,6 +74,18 @@ Progress: [██████████] 100% (All Phases)
 | Phase 06-slop-config-vault P03 | 5min | 2 tasks | 5 files |
 | Phase 06-slop-config-vault P04 | 6min | 2 tasks | 4 files |
 | Phase 06-slop-config-vault P05 | 4min | 2 tasks | 5 files |
+| Phase 10-pty-session-persistence P01 | 2min | 4 tasks | 5 files |
+| Phase 10-pty-session-persistence P02 | 5min | 2 tasks | 3 files |
+| Phase 10-pty-session-persistence P03 | 2min | 1 tasks | 1 files |
+| Phase 10-pty-session-persistence P03 | 2min | 2 tasks | 1 files |
+| Phase 11-canvas-panel-extraction P03 | 2min | 1 tasks | 1 files |
+| Phase 11-canvas-panel-extraction P01 | 2min | 2 tasks | 2 files |
+| Phase 11-canvas-panel-extraction P02 | 4min | 2 tasks | 1 files |
+| Phase 12-bottom-panel-shell P01 | 4min | 2 tasks | 3 files |
+| Phase 12-bottom-panel-shell P02 | 5min | 1 tasks | 1 files |
+| Phase 13-raw-terminal-sessions P01 | 2min | 2 tasks | 2 files |
+| Phase 13-raw-terminal-sessions P02 | 8min | 2 tasks | 3 files |
+| Phase 13-raw-terminal-sessions P03 | 525543min | 6 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -141,6 +153,30 @@ Recent decisions affecting current work:
 - [Phase 06-slop-config-vault]: TS type narrowing via cast-after-find pattern (putCall as [string, RequestInit]) — avoids broken overload on find() callback with destructured args
 - [Phase 06-slop-config-vault]: VaultTab is self-contained fetching /api/vault-status on mount — no props from SettingsModal
 - [Phase 06-slop-config-vault]: Sync dot: inSync=true→ok, !backupExists||!inSync→warn, !sourceExists→grey
+- [Phase 10-01]: Export SessionRegistry class (not just singleton) to allow isolated instances in tests — non-architectural auto-fix
+- [Phase 10-02]: SessionStatus 'reconnecting' exported from both useSessionManager.ts and usePty.ts independently — avoids circular imports, both copies kept in sync
+- [Phase 10-02]: session-ready handler in usePty sets 'waiting' unconditionally — works for fresh connections and reconnects without special-casing
+- [Phase 10-02]: sessionId in usePty effect deps is the minimal change for re-running effect on restore; overrideSessionIdRef logic for exit/fresh-spawn path untouched
+- [Phase 10-03]: Defined @keyframes pulse inline since no generic pulse keyframe existed in App.css
+- [Phase 11-03]: No font-family declarations in canvas CSS — global * rule in App.css handles inheritance per CLAUDE.md
+- [Phase 11-03]: canvas-column .live-canvas-panel override not needed — .live-canvas-panel already has flex:1 and overflow:hidden
+- [Phase 11-canvas-panel-extraction]: Mock all child components in App tests so App renders without xterm/PTY/WebSocket dependencies in jsdom
+- [Phase 11-canvas-panel-extraction]: CANVAS-02 passes at Wave 0 (canvas-column not yet implemented); RED requirement applies to overall test set
+- [Phase 11-02]: Canvas column state initialized from localStorage before render — no flash of wrong state on mount
+- [Phase 11-02]: toggleCanvas uses functional setIsCanvasVisible updater to write localStorage — avoids stale closure
+- [Phase 11-canvas-panel-extraction]: Canvas toggle button always rendered when prop is provided (not gated on visibility) so user can always re-open canvas panel
+- [Phase 11-canvas-panel-extraction]: CANVAS-05 test fixed: waitFor updated to wait for canvas-column element directly, not app-body which resolves before cwd is set
+- [Phase 11-canvas-panel-extraction]: Canvas max-width formula set to 70% of viewport width, independent of sidebar; canvas init width clamped to max on startup; fp-canvas-btn given border + white default + orange hover
+- [Phase 11-04-fix]: canvasMaxRef updated to innerWidth - sidebarWidth - CANVAS_MIN_CENTER(280) - handle; .main-area gets min-width: 280px as CSS hard floor — prevents center panel from shrinking to zero
+- [Phase 12-01]: useDragResize mock passes through initialWidth so BPANEL-05 height restoration test reflects localStorage value
+- [Phase 12-01]: bottom-panel-tab-bar rendered unconditionally inside .main-area using existing flex-direction:column layout
+- [Phase 12-02]: Chevron direction was inverted at checkpoint — up when closed, down when open; fixed in d124851 before human approval
+- [Phase 13-01]: useRawSessionManager accepts cwd: string | null — add() is a no-op when null, keeping hook safe before project connection
+- [Phase 13-01]: No localStorage persistence for raw sessions — ephemeral by design, simpler than useSessionManager
+- [Phase 13-02]: Test mock refactored to vi.hoisted() mockRawState — inner vi.mock() inside test bodies is unreliable for already-resolved modules in Vitest
+- [Phase 13-02]: Auto-seed useEffect excludes rawAdd from deps — changes every render and would cause infinite seed loop
+- [Phase 13-raw-terminal-sessions]: display:none for bottom panel keeps RawTerminalPane mounted — PTY WebSocket and xterm state survive panel hide/show without reconnect
+- [Phase 13-raw-terminal-sessions]: usePty killOnUnmount splits ephemeral raw terminals (kill) from persistent agent sessions (detach) via single boolean option
 
 ### Roadmap Evolution
 
@@ -165,6 +201,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-01T19:54:01.366Z
-Stopped at: Completed 06-05-PLAN.md — vault endpoints + VaultTab UI (checkpoint pending)
+Last session: 2026-05-02T23:03:20.029Z
+Stopped at: Completed 13-03-PLAN.md
 Resume file: None

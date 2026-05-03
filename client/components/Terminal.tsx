@@ -9,9 +9,10 @@ interface TerminalProps {
   sendResize: (cols: number, rows: number) => void;
   /** Bumped by parent when this terminal becomes visible again so we can re-fit + repaint. */
   visibleKey?: number;
+  accentHex?: string;
 }
 
-export function Terminal({ onReady, sendResize, visibleKey }: TerminalProps) {
+export function Terminal({ onReady, sendResize, visibleKey, accentHex }: TerminalProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<XTerminal | null>(null);
   const fitAddonRef = useRef<XFitAddon | null>(null);
@@ -27,11 +28,36 @@ export function Terminal({ onReady, sendResize, visibleKey }: TerminalProps) {
       // StrictMode runs cleanup before the second effect fires — bail if that happened
       if (cancelled) return;
 
+      const accent = accentHex ?? '#d4845a';
+      const accentMatch = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(accent);
+      const accentRgb = accentMatch
+        ? `${parseInt(accentMatch[1], 16)}, ${parseInt(accentMatch[2], 16)}, ${parseInt(accentMatch[3], 16)}`
+        : '212, 132, 90';
+
       terminal = new XTerm({
         scrollback: 5000,
         theme: {
           background: '#0d1117',
-          selectionBackground: 'rgba(212, 132, 90, 0.35)',
+          foreground: '#c9d1d9',
+          cursor: accent,
+          cursorAccent: '#0d1117',
+          selectionBackground: `rgba(${accentRgb}, 0.35)`,
+          black: '#21262d',
+          red: '#f85149',
+          green: '#7ee787',
+          yellow: '#e3b341',
+          blue: '#79c0ff',
+          magenta: '#d2a8ff',
+          cyan: '#76e3ea',
+          white: '#c9d1d9',
+          brightBlack: '#6e7681',
+          brightRed: '#ffa198',
+          brightGreen: '#a5f3b0',
+          brightYellow: '#f0c070',
+          brightBlue: '#a5d6ff',
+          brightMagenta: '#e2b9ff',
+          brightCyan: '#b3f0f7',
+          brightWhite: '#e6edf3',
         },
       });
 
@@ -55,6 +81,21 @@ export function Terminal({ onReady, sendResize, visibleKey }: TerminalProps) {
         if (containerRef.current.clientWidth && containerRef.current.clientHeight) {
           fitAddon.fit();
         }
+        terminal.focus();
+      }
+
+      // Inject scrollbar override after xterm opens — static CSS loses the cascade
+      // race against xterm's runtime DOM injection, so we must go later.
+      if (!document.getElementById('xterm-scrollbar-override')) {
+        const s = document.createElement('style');
+        s.id = 'xterm-scrollbar-override';
+        s.textContent =
+          '.xterm-viewport::-webkit-scrollbar{width:6px!important}' +
+          '.xterm-viewport::-webkit-scrollbar-track{background:var(--bg)!important}' +
+          '.xterm-viewport::-webkit-scrollbar-thumb{background:rgba(var(--accent-rgb),.7)!important;border-radius:3px!important}' +
+          '.xterm-viewport::-webkit-scrollbar-thumb:hover{background:var(--accent)!important}' +
+          '.xterm-viewport{scrollbar-width:thin!important;scrollbar-color:rgba(var(--accent-rgb),.7) var(--bg)!important}';
+        document.head.appendChild(s);
       }
 
       terminalRef.current = terminal;
@@ -96,6 +137,7 @@ export function Terminal({ onReady, sendResize, visibleKey }: TerminalProps) {
     <div
       ref={containerRef}
       style={{ width: '100%', height: '100%', background: '#0d1117' }}
+      onClick={() => terminalRef.current?.focus()}
     />
   );
 }
