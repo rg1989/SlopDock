@@ -7,6 +7,7 @@ import { mkdtemp, readFile } from 'fs/promises';
 
 vi.mock('../server/canvas-tab-sse.js', () => ({
   notifyCanvasTabsUpdated: vi.fn(),
+  setTabsGetter: vi.fn(),
 }));
 
 beforeEach(() => {
