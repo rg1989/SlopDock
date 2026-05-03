@@ -4,7 +4,7 @@ milestone: v1.0
 milestone_name: Foundation ✅ SHIPPED 2026-05-02
 status: executing
 stopped_at: "Checkpoint: 16-05 Task 2 awaiting human-verify"
-last_updated: "2026-05-03T19:01:22.643Z"
+last_updated: "2026-05-03T21:50:41.741Z"
 last_activity: 2026-05-03 — Plan 15-01 complete (RED test scaffold for TerminalInput, 5 tests)
 progress:
   total_phases: 2

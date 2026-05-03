@@ -1,5 +1,14 @@
 # Milestones
 
+## v1.2 Terminal-Native Composer (Shipped: 2026-05-03)
+
+**Phases completed:** 2 phases, 8 plans, 0 tasks
+
+**Key accomplishments:**
+- (none recorded)
+
+---
+
 ## v1.0 Foundation ✅ SHIPPED 2026-05-02
 
 **Phases:** 1–9 (6 formal + 3 ad-hoc)
