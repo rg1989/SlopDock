@@ -67,7 +67,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 15. Terminal Input Core | 3/3 | Complete   | 2026-05-03 |
+| 15. Terminal Input Core | 3/3 | Complete    | 2026-05-03 |
 | 16. Overlays + Cleanup | 0/? | Not started | - |
 
 ---
