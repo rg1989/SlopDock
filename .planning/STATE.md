@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Foundation ✅ SHIPPED 2026-05-02
 status: completed
-stopped_at: Completed 13-03-PLAN.md
-last_updated: "2026-05-02T23:52:53.162Z"
+stopped_at: Completed 14-03-PLAN.md
+last_updated: "2026-05-03T13:51:37.758Z"
 last_activity: "2026-04-30 - Completed quick task 1: add syntax colors and edit mode to file preview panel"
 progress:
-  total_phases: 4
+  total_phases: 5
   completed_phases: 4
-  total_plans: 12
-  completed_plans: 12
+  total_plans: 18
+  completed_plans: 13
   percent: 100
 ---
 
@@ -86,6 +86,7 @@ Progress: [██████████] 100% (All Phases)
 | Phase 13-raw-terminal-sessions P01 | 2min | 2 tasks | 2 files |
 | Phase 13-raw-terminal-sessions P02 | 8min | 2 tasks | 3 files |
 | Phase 13-raw-terminal-sessions P03 | 525543min | 6 tasks | 7 files |
+| Phase 14-canvas-mcp-and-connections P03 | 4min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -177,6 +178,8 @@ Recent decisions affecting current work:
 - [Phase 13-02]: Auto-seed useEffect excludes rawAdd from deps — changes every render and would cause infinite seed loop
 - [Phase 13-raw-terminal-sessions]: display:none for bottom panel keeps RawTerminalPane mounted — PTY WebSocket and xterm state survive panel hide/show without reconnect
 - [Phase 13-raw-terminal-sessions]: usePty killOnUnmount splits ephemeral raw terminals (kill) from persistent agent sessions (detach) via single boolean option
+- [Phase 14-03]: GET /api/mcp-servers self-pings /api/canvas/tabs to distinguish active vs registered for slopmop-canvas
+- [Phase 14-03]: POST /api/mcp-register-canvas uses tmp+rename atomic write; read-merge-write preserves all existing settings.json keys
 
 ### Roadmap Evolution
 
@@ -201,6 +204,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-02T23:03:20.029Z
-Stopped at: Completed 13-03-PLAN.md
+Last session: 2026-05-03T13:51:37.756Z
+Stopped at: Completed 14-03-PLAN.md
 Resume file: None
