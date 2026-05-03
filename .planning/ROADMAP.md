@@ -59,7 +59,14 @@ Plans:
   3. Typing `/` in the terminal input opens the slash command popup overlay above the input; arrow keys navigate and Enter selects
   4. Attached files appear as dismissible chips in a floating strip above the terminal input; clicking X on a chip removes it
   5. No Composer textarea code exists in the codebase — the old component and its wiring are deleted
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 16-01-PLAN.md — Wave 1: ActionBar component + CSS overlay wrapper + SessionPane wiring (ACTION-01, ACTION-02)
+- [ ] 16-02-PLAN.md — Wave 1: xterm slash interception in TerminalInput + SlashMenu wiring in SessionPane (SLASH-01, SLASH-02)
+- [ ] 16-03-PLAN.md — Wave 2: AttachBar floating chip strip in SessionPane (ATTACH-01, ATTACH-02)
+- [ ] 16-04-PLAN.md — Wave 2: Delete Composer.tsx, Composer.test.tsx, and dead CSS (CLEAN-01)
+- [ ] 16-05-PLAN.md — Wave 3: Human verify all 5 success criteria in browser
 
 ---
 
@@ -68,7 +75,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 15. Terminal Input Core | 3/3 | Complete    | 2026-05-03 |
-| 16. Overlays + Cleanup | 0/? | Not started | - |
+| 16. Overlays + Cleanup | 0/5 | Not started | - |
 
 ---
 
