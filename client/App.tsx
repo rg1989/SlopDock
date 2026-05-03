@@ -686,10 +686,13 @@ export default function App() {
                   onClick={() => rawSetActive(s.id)}
                 >
                   <span className="bpanel-tab-label">shell {i + 1}</span>
-                  <button
+                  <span
                     className="bpanel-tab-close"
+                    role="button"
+                    tabIndex={0}
                     onClick={e => { e.stopPropagation(); rawRemove(s.id); }}
-                  >×</button>
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); rawRemove(s.id); } }}
+                  >×</span>
                 </button>
               ))}
               <button className="bpanel-add-btn" onClick={rawAdd} title="New terminal">+</button>

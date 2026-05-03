@@ -1,11 +1,11 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: Foundation ✅ SHIPPED 2026-05-02
+milestone: v1.1
+milestone_name: Shell + Canvas ✅ SHIPPED 2026-05-03
 status: completed
-stopped_at: Completed 14-06-PLAN.md — Phase 14 fully complete
-last_updated: "2026-05-03T16:21:20.577Z"
-last_activity: "2026-04-30 - Completed quick task 1: add syntax colors and edit mode to file preview panel"
+stopped_at: Milestone v1.1 archived — all 5 phases, 18 plans complete
+last_updated: "2026-05-03T00:00:00.000Z"
+last_activity: "2026-05-03 - Archived v1.1 milestone: Shell + Canvas"
 progress:
   total_phases: 5
   completed_phases: 5

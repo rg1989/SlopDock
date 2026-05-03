@@ -46,14 +46,20 @@ export function usePty({ cwd, terminal, cols, rows, agentConfig, onData, session
   const onStatusRef = useRef(onStatus);
   const onExitRef = useRef(onExit);
   const workingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Messages sent before the WS is open are queued here and flushed on open
+  const pendingRef = useRef<ClientMessage[]>([]);
 
   useEffect(() => { onDataRef.current = onData; });
   useEffect(() => { onStatusRef.current = onStatus; });
   useEffect(() => { onExitRef.current = onExit; });
 
   const send = useCallback((msg: ClientMessage) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify(msg));
+    const ws = wsRef.current;
+    if (!ws) return;
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify(msg));
+    } else if (ws.readyState === WebSocket.CONNECTING) {
+      pendingRef.current.push(msg);
     }
   }, []);
 
@@ -61,6 +67,7 @@ export function usePty({ cwd, terminal, cols, rows, agentConfig, onData, session
     if (!cwd || !terminal) return;
 
     let cancelled = false;
+    pendingRef.current = [];
     const resolvedSessionId = overrideSessionIdRef.current ?? sessionId ?? crypto.randomUUID();
     overrideSessionIdRef.current = null;
 
@@ -69,7 +76,9 @@ export function usePty({ cwd, terminal, cols, rows, agentConfig, onData, session
 
     ws.onopen = () => {
       setConnected(true);
-      send({ type: 'start', sessionId: resolvedSessionId, cwd, cols, rows, agentCommand: agentConfig.command, agentArgs: agentConfig.args });
+      ws.send(JSON.stringify({ type: 'start', sessionId: resolvedSessionId, cwd, cols, rows, agentCommand: agentConfig.command, agentArgs: agentConfig.args }));
+      for (const msg of pendingRef.current) ws.send(JSON.stringify(msg));
+      pendingRef.current = [];
     };
 
     ws.onmessage = (event) => {

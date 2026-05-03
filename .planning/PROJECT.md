@@ -4,12 +4,12 @@
 
 A premium local web application that wraps the Claude CLI in a rich, beautifully designed interface. It provides a real pseudo-terminal (PTY) experience inside the browser, a VSCode-style file explorer sidebar, file attachment with previews, voice-to-text input, and a text-to-speech mode that reads agent responses aloud with mid-speech interruption support.
 
-## Current State — v1.1 In Progress (v1.0 Shipped 2026-05-02)
+## Current State — v1.1 Shipped 2026-05-03
 
-**Version:** v1.0 Foundation shipped. v1.1 phases 10–13 complete, phase 14 in planning.
+**Version:** v1.1 Shell + Canvas ✅
 **Status:** Production-ready for single-user local use
 
-Everything in the core loop works: open a project folder → launch Claude CLI in a real PTY terminal → attach files → speak messages → hear responses → manage multiple tab sessions → config persisted to `.slop/` on disk. Sessions survive browser reloads (v1.1). Canvas panel always visible right column; bottom panel with raw terminal shells.
+Everything in the core loop works: open a project folder → launch Claude CLI in a real PTY terminal → attach files → speak messages → hear responses → manage multiple tab sessions → config persisted to `.slop/` on disk. Sessions survive browser reloads. Canvas panel always visible right column; bottom panel with raw terminal shells. Claude CLI can write to canvas tabs directly via MCP tools.
 
 ### What's Live
 
@@ -57,13 +57,17 @@ A single-user power tool that makes working with Claude CLI feel as fluid as a n
 
 ---
 
-## v1.1 Goals
+## v1.1 Goals ✅ ALL SHIPPED 2026-05-03
 
 1. **PTY Session Persistence** (Phase 10) ✅ — live reconnect after browser reload
 2. **Canvas Panel Extraction** (Phase 11) ✅ — persistent right-column panel, resizable
 3. **Bottom Panel Shell** (Phase 12) ✅ — collapsible bottom zone with horizontal resize
 4. **Raw Terminal Sessions** (Phase 13) ✅ — multi-tab PTY shells in bottom panel
-5. **Canvas MCP + Multi-Tab + MCP UI** (Phase 14) — agent-controlled multi-tab canvas via MCP tools; MCP connections management UI
+5. **Canvas MCP + Multi-Tab + MCP UI** (Phase 14) ✅ — agent-controlled multi-tab canvas via MCP tools; MCP connections management UI
+
+## v1.2 Goals
+
+_To be defined. Run `/gsd:new-milestone` to begin research and requirements definition._
 
 ---
 
