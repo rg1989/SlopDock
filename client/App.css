@@ -65,9 +65,13 @@ html, body, #root { height: 100%; background: var(--bg); color: var(--txt); font
   flex-shrink: 0;
 }
 
+.terminal-input-strip .xterm-cursor {
+  display: none !important;
+}
+
 .terminal-attach-strip {
   position: absolute;
-  bottom: 100%;
+  bottom: 0;
   left: 0;
   right: 0;
   display: flex;
@@ -77,6 +81,7 @@ html, body, #root { height: 100%; background: var(--bg); color: var(--txt); font
   background: var(--surface);
   border-top: 1px solid var(--border);
   z-index: 10;
+  pointer-events: all;
 }
 
 .terminal-action-bar {

@@ -185,8 +185,11 @@ export function SessionPane({
       <div style={{ display: 'flex', flex: 1, flexDirection: 'column', minHeight: 0, minWidth: 0 }}>
         <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }} onClick={() => inputRef.current?.focus()}>
           <TerminalComponent onReady={handleReady} sendResize={handleSendResize} visibleKey={visibleKey} accentHex={accentHex} disableStdin={true} />
-        </div>
-        <div className="terminal-input-wrapper" ref={inputWrapperRef}>
+          <ActionBar
+            voiceSlot={voiceSlot}
+            onAttach={handlePickFile}
+            picking={picking}
+          />
           {session.attachments.length > 0 && (
             <div className="terminal-attach-strip">
               <AttachBar
@@ -195,11 +198,8 @@ export function SessionPane({
               />
             </div>
           )}
-          <ActionBar
-            voiceSlot={voiceSlot}
-            onAttach={handlePickFile}
-            picking={picking}
-          />
+        </div>
+        <div className="terminal-input-wrapper" ref={inputWrapperRef}>
           <TerminalInput
             ref={inputRef}
             sendInput={handleSendInput}
