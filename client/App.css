@@ -367,10 +367,32 @@ html, body, #root { height: 100%; background: var(--bg); color: var(--txt); font
   border: none;
   outline: none;
   resize: none;
-  padding: 12px;
+  padding: 12px 12px 80px;
   line-height: 1.5;
   white-space: pre;
   overflow: auto;
+}
+.fp-edit-overlay {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+}
+.fp-shiki-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.fp-edit-transparent {
+  position: absolute;
+  inset: 0;
+  color: transparent !important;
+  background: transparent !important;
+  caret-color: var(--txt);
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
 }
 
 /* Syntax token colors — GitHub Dark palette */
@@ -849,20 +871,19 @@ html, body, #root { height: 100%; background: var(--bg); color: var(--txt); font
 .fp-path-home-icon {
   flex-shrink: 0;
   margin-right: 5px;
-  color: var(--border-muted);
+  color: var(--txt-sub);
   transition: color 0.12s;
 }
-.fp-path-btn:hover .fp-path-home-icon,
-.fp-path-btn.open .fp-path-home-icon { color: var(--txt-sub); }
 
 .fp-path-btn {
   display: flex;
   align-items: center;
   background: none;
-  border: 1px solid transparent;
+  border: 1px solid var(--border);
   border-radius: 5px;
   cursor: pointer;
-  padding: 3px 6px;
+  height: 27px;
+  padding: 0 6px;
   text-align: left;
   font-family: monospace;
   font-size: 13px;
@@ -1610,6 +1631,143 @@ html, body, #root { height: 100%; background: var(--bg); color: var(--txt); font
   outline: none;
 }
 .settings-accent-input:focus { border-color: rgba(var(--accent-rgb), 0.5); }
+
+/* ── Accent color picker ─────────────────────────────────────────── */
+.accent-picker-wrap { position: relative; }
+
+.accent-trigger {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--txt);
+  font-size: 12px;
+  font-family: monospace;
+  cursor: pointer;
+  min-width: 160px;
+  transition: border-color 0.12s;
+}
+.accent-trigger:hover:not(:disabled) { border-color: var(--border-muted); }
+.accent-trigger--open { border-color: rgba(var(--accent-rgb), 0.5); }
+.accent-trigger:disabled { opacity: 0.45; cursor: default; }
+.accent-trigger-name { flex: 1; text-align: left; }
+.accent-trigger-arrow { font-size: 9px; color: var(--txt-dim); }
+
+.accent-drop {
+  position: fixed;
+  z-index: 10000;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  padding: 4px 0;
+  overflow: visible;
+}
+
+.accent-drop-section { padding: 2px 0; }
+
+.accent-drop-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
+.accent-drop-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: monospace;
+  color: var(--txt);
+  transition: background 0.1s;
+  position: relative;
+}
+.accent-drop-row:hover { background: var(--surface-hover); }
+.accent-drop-row--sel { background: var(--surface-hi); }
+.accent-drop-row--sel:hover { background: var(--surface-hi); }
+
+.accent-drop-name { flex: 1; }
+
+.accent-drop-check {
+  font-size: 11px;
+  color: var(--accent);
+}
+
+.accent-drop-remove {
+  background: none;
+  border: none;
+  padding: 0 2px;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--txt-dim);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.1s, color 0.1s;
+}
+.accent-drop-row:hover .accent-drop-remove { opacity: 1; }
+.accent-drop-remove:hover { color: var(--error); }
+
+.accent-drop-add {
+  padding: 6px 10px 6px;
+}
+.accent-drop-add-row {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+.accent-add-input {
+  padding: 3px 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--txt);
+  font-size: 11px;
+  font-family: monospace;
+  outline: none;
+  flex: 1;
+}
+.accent-add-input--hex { flex: 0 0 76px; }
+.accent-add-input:focus { border-color: rgba(var(--accent-rgb), 0.5); }
+
+.accent-add-btn {
+  padding: 3px 8px;
+  background: rgba(var(--accent-rgb), 0.12);
+  border: 1px solid rgba(var(--accent-rgb), 0.3);
+  border-radius: 4px;
+  color: var(--accent);
+  font-size: 11px;
+  font-family: monospace;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s;
+}
+.accent-add-btn:hover { background: rgba(var(--accent-rgb), 0.22); }
+
+.accent-add-error {
+  font-size: 10px;
+  color: var(--error);
+  margin-top: 4px;
+}
+
+.accent-hex-tooltip {
+  position: fixed;
+  z-index: 10001;
+  transform: translateX(-50%);
+  background: var(--surface-hi);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-family: monospace;
+  color: var(--txt-sub);
+  pointer-events: none;
+  white-space: nowrap;
+}
 
 .settings-capture-hint {
   font-size: 11px;
@@ -4211,11 +4369,13 @@ html, body, #root { height: 100%; background: var(--bg); color: var(--txt); font
   background: none;
   border: 1px solid var(--border);
   cursor: pointer;
-  color: var(--txt);
-  padding: 3px 5px;
-  border-radius: 3px;
+  color: var(--txt-sub);
+  padding: 5px 7px;
+  border-radius: 5px;
   display: flex;
   align-items: center;
+  justify-content: center;
+  line-height: 1;
   transition: color 0.12s, background 0.12s, border-color 0.12s;
 }
 .fp-canvas-btn:hover {
@@ -4225,6 +4385,57 @@ html, body, #root { height: 100%; background: var(--bg); color: var(--txt); font
 }
 .fp-canvas-btn--active { color: var(--accent); border-color: rgba(var(--accent-rgb), 0.5); }
 .fp-canvas-btn--active:hover { color: var(--accent-hover); background: rgba(var(--accent-rgb), 0.1); }
+
+.fp-mcp-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--txt-sub);
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s;
+}
+.fp-mcp-btn:hover {
+  color: var(--txt);
+  background: var(--surface-hover);
+}
+
+.mcp-server-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.mcp-server-name {
+  font-size: 13px;
+  color: var(--txt-bright);
+  font-family: monospace;
+  min-width: 140px;
+}
+.mcp-server-cmd {
+  color: var(--txt-sub);
+  font-size: 11px;
+  font-family: monospace;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mcp-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.mcp-status-dot--active { background: var(--success); }
+.mcp-status-dot--registered { background: var(--txt-dim); }
 
 /* ── Health Status Bar ──────────────────────────────────────────────────── */
 .health-bar {

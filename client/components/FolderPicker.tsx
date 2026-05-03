@@ -39,9 +39,10 @@ interface FolderPickerProps {
   onRulesOpen?: () => void;
   onCanvasToggle?: () => void;
   isCanvasVisible?: boolean;
+  onMcpOpen?: () => void;
 }
 
-export function FolderPicker({ cwd, onConnect, onSettingsOpen, onSuperToolsOpen, onRulesOpen, onCanvasToggle, isCanvasVisible }: FolderPickerProps) {
+export function FolderPicker({ cwd, onConnect, onSettingsOpen, onSuperToolsOpen, onRulesOpen, onCanvasToggle, isCanvasVisible, onMcpOpen }: FolderPickerProps) {
   const [picking, setPicking] = useState(false);
   const [branch, setBranch] = useState<string | null>(null);
   const [branches, setBranches] = useState<string[]>([]);
@@ -286,9 +287,25 @@ export function FolderPicker({ cwd, onConnect, onSettingsOpen, onSuperToolsOpen,
             onClick={onCanvasToggle}
             title={isCanvasVisible ? 'Hide canvas' : 'Show canvas'}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
               <path d="M9 9h6v6H9z"/>
+            </svg>
+          </button>
+        )}
+
+        {onMcpOpen && (
+          <button
+            className="fp-mcp-btn"
+            onClick={onMcpOpen}
+            title="MCP Connections"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="8" width="8" height="8" rx="1"/>
+              <rect x="14" y="8" width="8" height="8" rx="1"/>
+              <line x1="10" y1="12" x2="14" y2="12"/>
+              <line x1="7" y1="6" x2="7" y2="8"/>
+              <line x1="17" y1="6" x2="17" y2="8"/>
             </svg>
           </button>
         )}
